@@ -1,0 +1,58 @@
+# Privacy Policy for Appli.io
+
+**Last Updated:** January 29, 2026
+
+## Overview
+Appli.io is a Chrome extension that helps users track their job applications by syncing job-related emails from Gmail and organizing them in a dashboard.
+
+## Data Collection and Usage
+
+### What Data We Collect
+- **Email Content**: We access job application emails from your Gmail account to extract information such as company names, job titles, application statuses, and dates.
+- **Authentication Tokens**: We use OAuth 2.0 tokens to securely access your Gmail account.
+
+### How We Use Your Data
+- All data is processed **locally on your device** using Chrome's local storage
+- Email content is analyzed to identify job applications and extract relevant information
+- Extracted data (company, role, status, date) is stored locally for display in the dashboard
+- **We do not transmit any data to external servers**
+- **We do not sell, share, or transfer your data to third parties**
+
+### Data Storage
+- All job application data is stored locally on your device using `chrome.storage.local`
+- No data is stored on external servers or databases
+- You can delete all stored data at any time by removing the extension
+
+### Permissions Used
+- **identity**: Required for OAuth 2.0 authentication with Google to access Gmail
+- **storage**: Required to save job application data locally on your device
+- **notifications**: Required to notify you about sync status and operations
+- **Gmail API (gmail.readonly)**: Required to read job application emails from your inbox
+
+### Data Security
+- We use Google's OAuth 2.0 for secure authentication
+- All data processing happens locally on your device
+- We only request read-only access to Gmail
+- No passwords are stored or transmitted
+
+### Third-Party Services
+- **Google Gmail API**: Used to read emails from your Gmail account
+- **Google OAuth 2.0**: Used for secure authentication
+
+### Your Rights
+You have the right to:
+- Delete all stored data by uninstalling the extension
+- Revoke Gmail access at any time through your Google Account settings
+- Manually edit or delete individual job entries in the dashboard
+
+### Changes to This Policy
+We may update this privacy policy from time to time. Any changes will be reflected in the "Last Updated" date above.
+
+### Contact
+For questions or concerns about this privacy policy, please contact us through our GitHub repository: https://github.com/kuko798/appli.io
+
+## Compliance
+This extension complies with:
+- Chrome Web Store Developer Program Policies
+- Google API Services User Data Policy
+- General Data Protection Regulation (GDPR) principles
