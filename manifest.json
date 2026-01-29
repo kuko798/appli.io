@@ -1,19 +1,27 @@
 {
   "manifest_version": 3,
-  "name": "Job Application Tracker",
+  "name": "Appli.io",
   "version": "1.0",
-  "permissions": ["identity", "storage"],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "permissions": [
+    "identity",
+    "storage",
+    "notifications"
+  ],
   "oauth2": {
     "client_id": "1097794489757-u3p40a52bjb2h8hi7t2gspephtluf9ui.apps.googleusercontent.com",
     "scopes": [
-      "https://www.googleapis.com/auth/gmail.readonly",
-      "https://www.googleapis.com/auth/spreadsheets"
+      "https://www.googleapis.com/auth/gmail.readonly"
     ]
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "assets/background.js"
   },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "src/popup/index.html"
   }
 }

@@ -1,10 +1,69 @@
 <!DOCTYPE html>
 <html>
-  <body>
-    <h3>Job Tracker</h3>
-    <button id="sync">Refresh Applications</button>
-    <p id="status"></p>
 
-    <script src="popup.js"></script>
-  </body>
+<head>
+  <title>Job Tracker</title>
+  <style>
+    body {
+      width: 250px;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 10px;
+      text-align: center;
+    }
+
+    h3 {
+      margin-top: 5px;
+      color: #444;
+    }
+
+    button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    button#view-dashboard {
+      background-color: #34a853;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    #status {
+      margin-top: 10px;
+      color: #666;
+      font-size: 13px;
+      min-height: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h3>Appli.io</h3>
+
+  <label for="date-range" style="font-size:12px; display:block; text-align:left; margin-bottom:5px;">Search
+    Range:</label>
+  <select id="date-range"
+    style="width:100%; margin-bottom:10px; padding:5px; border-radius:4px; border:1px solid #ccc;">
+    <option value="1m">Last 1 Month</option>
+    <option value="3m">Last 3 Months</option>
+    <option value="6m">Last 6 Months</option>
+    <option value="1y">Last 1 Year</option>
+  </select>
+
+  <button id="sync">Sync from Gmail</button>
+  <button id="view-dashboard">View Dashboard</button>
+
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+
 </html>

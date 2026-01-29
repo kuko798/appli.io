@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>My Applications</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            color: #333;
+        }
+
+        h1 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #5f6368;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-applied {
+            background-color: #e8f0fe;
+            color: #1a73e8;
+        }
+
+        .status-interview {
+            background-color: #fff8e1;
+            color: #f9ab00;
+        }
+
+        .status-offer {
+            background-color: #e6f4ea;
+            color: #137333;
+        }
+
+        .status-rejected {
+            background-color: #fce8e6;
+            color: #c5221f;
+        }
+    </style>
+</head>
+
+<body>
+    My Applications
+    <button id="refresh">Refresh Data</button>
+    </h1>
+
+    <div id="stats-container" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div class="stat-card"
+            style="background: #e8f0fe; color: #1a73e8; padding: 15px; border-radius: 8px; flex: 1; min-width: 120px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold;" id="count-applied">0</div>
+            <div style="font-size: 12px; text-transform: uppercase; font-weight: 600;">Applied</div>
+        </div>
+        <div class="stat-card"
+            style="background: #fff8e1; color: #f9ab00; padding: 15px; border-radius: 8px; flex: 1; min-width: 120px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold;" id="count-interview">0</div>
+            <div style="font-size: 12px; text-transform: uppercase; font-weight: 600;">Interview</div>
+        </div>
+        <div class="stat-card"
+            style="background: #e6f4ea; color: #137333; padding: 15px; border-radius: 8px; flex: 1; min-width: 120px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold;" id="count-offer">0</div>
+            <div style="font-size: 12px; text-transform: uppercase; font-weight: 600;">Offer</div>
+        </div>
+        <div class="stat-card"
+            style="background: #fce8e6; color: #c5221f; padding: 15px; border-radius: 8px; flex: 1; min-width: 120px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold;" id="count-rejected">0</div>
+            <div style="font-size: 12px; text-transform: uppercase; font-weight: 600;">Rejected</div>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody id="job-list">
+            <!-- Rows will be added here via JS -->
+        </tbody>
+    </table>
+
+    <div id="pagination-controls"
+        style="display:none; justify-content: center; align-items: center; margin-top: 20px; gap: 15px;">
+        <button id="prev-page">Previous</button>
+        <span id="page-info">Page 1</span>
+        <button id="next-page">Next</button>
+    </div>
+
+    <p id="empty-msg" style="display:none; text-align:center; margin-top: 40px; color: #666;">
+        No applications found yet. Sync your email to get started.
+    </p>
+
+    <script src="dashboard.js"></script>
+</body>
+
+</html>
