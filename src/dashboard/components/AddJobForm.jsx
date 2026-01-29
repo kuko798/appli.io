@@ -127,35 +127,41 @@ const styles = {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(5px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000
     },
     modal: {
-        background: 'white',
-        borderRadius: '12px',
-        padding: '30px',
-        maxWidth: '500px',
+        background: 'linear-gradient(135deg, rgba(15, 12, 41, 0.95) 0%, rgba(48, 43, 99, 0.95) 100%)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '20px',
+        padding: '40px',
+        maxWidth: '550px',
         width: '90%',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
     },
     title: {
-        margin: '0 0 20px 0',
-        fontSize: '24px',
-        color: '#202124',
-        fontWeight: '600'
+        margin: '0 0 30px 0',
+        fontSize: '28px',
+        fontWeight: '700',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        letterSpacing: '-0.5px'
     },
     form: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '15px'
+        gap: '20px'
     },
     formGroup: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '5px',
+        gap: '8px',
         flex: 1
     },
     formRow: {
@@ -163,50 +169,58 @@ const styles = {
         gap: '15px'
     },
     label: {
-        fontSize: '14px',
+        fontSize: '13px',
         fontWeight: '600',
-        color: '#5f6368'
+        color: 'rgba(255, 255, 255, 0.7)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
     },
     input: {
-        padding: '10px',
-        border: '1px solid #ddd',
-        borderRadius: '6px',
+        padding: '12px 16px',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '10px',
         fontSize: '14px',
         outline: 'none',
-        transition: 'border 0.2s'
+        transition: 'all 0.2s',
+        background: 'rgba(255, 255, 255, 0.05)',
+        color: 'white'
     },
     select: {
-        padding: '10px',
-        border: '1px solid #ddd',
-        borderRadius: '6px',
+        padding: '12px 16px',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '10px',
         fontSize: '14px',
         outline: 'none',
-        background: 'white',
+        background: 'rgba(255, 255, 255, 0.05)',
+        color: 'white',
         cursor: 'pointer'
     },
     buttonGroup: {
         display: 'flex',
-        gap: '10px',
+        gap: '12px',
         justifyContent: 'flex-end',
         marginTop: '10px'
     },
     cancelBtn: {
-        padding: '10px 20px',
-        border: '1px solid #ddd',
-        borderRadius: '6px',
-        background: 'white',
+        padding: '12px 24px',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '10px',
+        background: 'rgba(255, 255, 255, 0.05)',
         cursor: 'pointer',
         fontWeight: '600',
-        color: '#5f6368'
+        color: 'rgba(255, 255, 255, 0.9)',
+        transition: 'all 0.2s'
     },
     submitBtn: {
-        padding: '10px 20px',
+        padding: '12px 24px',
         border: 'none',
-        borderRadius: '6px',
-        background: '#4285f4',
+        borderRadius: '10px',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         color: 'white',
         cursor: 'pointer',
-        fontWeight: '600'
+        fontWeight: '600',
+        boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+        transition: 'all 0.2s'
     }
 };
 

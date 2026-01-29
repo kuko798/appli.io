@@ -93,45 +93,69 @@ function Dashboard() {
 
 const styles = {
     container: {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '40px 20px'
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+        padding: '40px 20px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
     },
     header: {
+        maxWidth: '1400px',
+        margin: '0 auto 40px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '30px'
+        padding: '30px',
+        background: 'rgba(255, 255, 255, 0.05)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
     },
     title: {
         margin: 0,
-        fontSize: '28px',
-        color: '#202124',
-        fontWeight: '600'
+        fontSize: '32px',
+        fontWeight: '700',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        letterSpacing: '-0.5px'
     },
     headerButtons: {
         display: 'flex',
-        gap: '10px'
+        gap: '12px'
     },
     addBtn: {
-        background: '#34a853',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         color: 'white',
         border: 'none',
-        padding: '10px 20px',
-        borderRadius: '6px',
+        padding: '12px 24px',
+        borderRadius: '12px',
         cursor: 'pointer',
         fontWeight: '600',
-        transition: 'background 0.2s'
+        fontSize: '14px',
+        transition: 'all 0.3s ease',
+        boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+        transform: 'translateY(0)',
+        ':hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 6px 20px rgba(102, 126, 234, 0.6)'
+        }
     },
     refreshBtn: {
-        background: '#4285f4',
+        background: 'rgba(255, 255, 255, 0.1)',
         color: 'white',
-        border: 'none',
-        padding: '10px 20px',
-        borderRadius: '6px',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        padding: '12px 24px',
+        borderRadius: '12px',
         cursor: 'pointer',
         fontWeight: '600',
-        transition: 'background 0.2s'
+        fontSize: '14px',
+        transition: 'all 0.3s ease',
+        backdropFilter: 'blur(10px)',
+        ':hover': {
+            background: 'rgba(255, 255, 255, 0.15)',
+            borderColor: 'rgba(255, 255, 255, 0.3)'
+        }
     }
 };
 

@@ -44,9 +44,11 @@ const Classifier = {
 
     predict: function (text) {
         if (!text) return "Applied";
+        const lowerText = text.toLowerCase();
         const tokens = this.tokenize(text);
         let scores = { ...this.CLASS_PRIORS };
 
+        // Token-based scoring
         for (const token of tokens) {
             const wordProbs = this.MODEL[token];
             if (wordProbs) {
@@ -57,16 +59,65 @@ const Classifier = {
             }
         }
 
-        if (/not (be )?moving forward|unable to offer|not selected|decided to pursue|position has been filled/i.test(text)) {
-            scores["Rejected"] += 100;
+        // CRITICAL: Check for rejection patterns FIRST (highest priority)
+        // These are definitive rejections regardless of other keywords
+        const strongRejectionPatterns = [
+            /not (be )?moving forward/i,
+            /decided not to move forward/i,
+            /will not be moving forward/i,
+            /unable to offer/i,
+            /not selected/i,
+            /decided to pursue other candidates/i,
+            /pursuing other candidates/i,
+            /offered? (the )?(position|role) to (another|other) candidate/i,
+            /extended an offer to (another|other) candidate/i,
+            /position has been filled/i,
+            /filled (the )?(position|role)/i,
+            /no longer considering/i,
+            /not the right fit/i,
+            /going (in )?a different direction/i,
+            /more qualified candidates/i
+        ];
+
+        for (const pattern of strongRejectionPatterns) {
+            if (pattern.test(text)) {
+                scores["Rejected"] += 200; // Very strong signal
+            }
         }
-        if (/pleased to offer|would like to offer/i.test(text)) {
-            scores["Offer"] += 100;
+
+        // Check for formal closing + rejection context (like "Regards" after bad news)
+        const hasFormalClosing = /\b(sincerely|regards|best wishes|best regards|kind regards|thank you)\b/i.test(lowerText);
+        const hasRejectionContext = /appreciate|thank you for|wish you (the )?best|good luck/i.test(lowerText);
+
+        if (hasFormalClosing && hasRejectionContext && scores["Rejected"] > 10) {
+            scores["Rejected"] += 50; // Boost rejection if formal closing + rejection context
         }
-        if (/schedule a time|availability for a call|invite you to interview/i.test(text)) {
+
+        // CONTEXT-AWARE: "offer" in rejection context should NOT boost Offer score
+        // Check if "offer" appears with "other candidates"
+        if (/offer.{0,30}(other|another) candidate/i.test(text) || /(other|another) candidate.{0,30}offer/i.test(text)) {
+            scores["Offer"] = Math.max(0, scores["Offer"] - 100); // Remove offer score
+            scores["Rejected"] += 80; // This is actually a rejection
+        }
+
+        // Positive offer patterns (only if NOT in rejection context)
+        if (!/not (be )?moving forward|other candidate/i.test(text)) {
+            if (/pleased to (extend|offer)|delighted to offer|happy to offer|would like to (extend|offer)/i.test(text)) {
+                scores["Offer"] += 100;
+            }
+        }
+
+        // Interview patterns
+        if (/schedule (a |an )?(time|call|interview)|availability for (a |an )?(call|interview)|invite you to interview|next steps? (is|are|would be) (a |an )?interview/i.test(text)) {
             scores["Interview"] += 60;
         }
 
+        // Applied confirmation patterns
+        if (/received your application|thank you for (your )?applying|application (has been )?received/i.test(text) && scores["Rejected"] < 50) {
+            scores["Applied"] += 30;
+        }
+
+        // Find the highest score
         let maxLabel = "Applied";
         let maxScore = -1;
 
@@ -76,6 +127,7 @@ const Classifier = {
                 maxLabel = label;
             }
         }
+
         return maxLabel;
     },
 

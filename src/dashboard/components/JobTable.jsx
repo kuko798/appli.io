@@ -45,9 +45,18 @@ const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onD
                 </thead>
                 <tbody>
                     {currentJobs.map((job) => (
-                        <tr key={job.id} style={styles.tr}>
+                        <tr
+                            key={job.id}
+                            style={styles.tr}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                            }}
+                        >
                             <td style={styles.td}>{job.company || 'Unknown'}</td>
-                            <td style={{ ...styles.td, fontWeight: '600', color: '#1a73e8' }}>{job.title || 'N/A'}</td>
+                            <td style={{ ...styles.td, fontWeight: '600', color: '#a78bfa' }}>{job.title || 'N/A'}</td>
                             <td style={styles.td}>{job.subject}</td>
                             <td style={styles.td}>
                                 <select
@@ -67,6 +76,14 @@ const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onD
                                     onClick={() => onDeleteJob(job.id)}
                                     style={styles.deleteBtn}
                                     title="Delete job"
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(248, 113, 113, 0.2)';
+                                        e.currentTarget.style.borderColor = 'rgba(248, 113, 113, 0.5)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(248, 113, 113, 0.1)';
+                                        e.currentTarget.style.borderColor = 'rgba(248, 113, 113, 0.3)';
+                                    }}
                                 >
                                     🗑️
                                 </button>
@@ -78,13 +95,45 @@ const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onD
 
             {totalPages > 1 && (
                 <div style={styles.pagination}>
-                    <button onClick={handlePrev} disabled={currentPage === 1} style={styles.pageBtn}>
+                    <button
+                        onClick={handlePrev}
+                        disabled={currentPage === 1}
+                        style={{
+                            ...styles.pageBtn,
+                            opacity: currentPage === 1 ? 0.5 : 1,
+                            cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (currentPage !== 1) {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                        }}
+                    >
                         Previous
                     </button>
                     <span style={styles.pageInfo}>
                         Page {currentPage} of {totalPages}
                     </span>
-                    <button onClick={handleNext} disabled={currentPage === totalPages} style={styles.pageBtn}>
+                    <button
+                        onClick={handleNext}
+                        disabled={currentPage === totalPages}
+                        style={{
+                            ...styles.pageBtn,
+                            opacity: currentPage === totalPages ? 0.5 : 1,
+                            cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (currentPage !== totalPages) {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                        }}
+                    >
                         Next
                     </button>
                 </div>
@@ -93,57 +142,52 @@ const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onD
     );
 };
 
-const getStatusStyle = (status) => {
-    const base = {
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '12px',
-        fontWeight: 'bold',
-        display: 'inline-block'
-    };
-    switch (status) {
-        case 'Interview': return { ...base, bg: '#fff8e1', color: '#f9ab00', backgroundColor: '#fff8e1' };
-        case 'Offer': return { ...base, bg: '#e6f4ea', color: '#137333', backgroundColor: '#e6f4ea' };
-        case 'Rejected': return { ...base, bg: '#fce8e6', color: '#c5221f', backgroundColor: '#fce8e6' };
-        default: return { ...base, bg: '#e8f0fe', color: '#1a73e8', backgroundColor: '#e8f0fe' };
-    }
-};
-
 const getStatusSelectStyle = (status) => {
     const baseColors = {
-        'Applied': { bg: '#e8f0fe', color: '#1a73e8' },
-        'Interview': { bg: '#fff8e1', color: '#f9ab00' },
-        'Offer': { bg: '#e6f4ea', color: '#137333' },
-        'Rejected': { bg: '#fce8e6', color: '#c5221f' }
+        'Applied': { bg: 'rgba(96, 165, 250, 0.2)', color: '#60a5fa' },
+        'Interview': { bg: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24' },
+        'Offer': { bg: 'rgba(52, 211, 153, 0.2)', color: '#34d399' },
+        'Rejected': { bg: 'rgba(248, 113, 113, 0.2)', color: '#f87171' }
     };
 
     const colors = baseColors[status] || baseColors['Applied'];
 
     return {
-        padding: '6px 10px',
-        borderRadius: '12px',
-        fontSize: '12px',
-        fontWeight: 'bold',
-        border: 'none',
+        padding: '8px 12px',
+        borderRadius: '10px',
+        fontSize: '13px',
+        fontWeight: '600',
+        border: `1px solid ${colors.color}40`,
         backgroundColor: colors.bg,
         color: colors.color,
         cursor: 'pointer',
-        outline: 'none'
+        outline: 'none',
+        transition: 'all 0.2s ease'
     };
 };
 
 const styles = {
     container: {
-        background: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-        overflow: 'hidden'
+        maxWidth: '1400px',
+        margin: '0 auto',
+        background: 'rgba(255, 255, 255, 0.05)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        overflow: 'hidden',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
     },
     empty: {
         textAlign: 'center',
-        padding: '40px',
-        color: '#666',
-        fontSize: '16px'
+        padding: '60px',
+        color: 'rgba(255, 255, 255, 0.6)',
+        fontSize: '16px',
+        maxWidth: '1400px',
+        margin: '0 auto',
+        background: 'rgba(255, 255, 255, 0.05)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
     },
     table: {
         width: '100%',
@@ -151,46 +195,58 @@ const styles = {
     },
     th: {
         textAlign: 'left',
-        padding: '16px',
-        background: '#f8f9fa',
-        color: '#5f6368',
-        fontWeight: '600',
-        borderBottom: '1px solid #eee'
+        padding: '20px',
+        background: 'rgba(255, 255, 255, 0.03)',
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontWeight: '700',
+        fontSize: '12px',
+        textTransform: 'uppercase',
+        letterSpacing: '1px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
     },
     tr: {
-        borderBottom: '1px solid #f1f1f1',
-        transition: 'background 0.1s'
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+        transition: 'all 0.2s ease'
     },
     td: {
-        padding: '14px 16px',
-        color: '#333'
+        padding: '18px 20px',
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: '14px'
     },
     pagination: {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '20px',
-        gap: '15px'
+        gap: '20px',
+        padding: '25px',
+        background: 'rgba(255, 255, 255, 0.02)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
     },
     pageBtn: {
-        padding: '8px 16px',
-        border: '1px solid #ddd',
-        borderRadius: '4px',
-        background: 'white',
-        cursor: 'pointer'
+        padding: '10px 20px',
+        background: 'rgba(255, 255, 255, 0.1)',
+        color: 'white',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '10px',
+        cursor: 'pointer',
+        fontWeight: '600',
+        fontSize: '14px',
+        transition: 'all 0.3s ease',
+        backdropFilter: 'blur(10px)'
     },
     pageInfo: {
         fontSize: '14px',
-        color: '#666'
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontWeight: '600'
     },
     deleteBtn: {
-        background: 'transparent',
-        border: 'none',
+        background: 'rgba(248, 113, 113, 0.1)',
+        border: '1px solid rgba(248, 113, 113, 0.3)',
         cursor: 'pointer',
         fontSize: '18px',
-        padding: '4px 8px',
-        borderRadius: '4px',
-        transition: 'background 0.2s'
+        padding: '6px 12px',
+        borderRadius: '8px',
+        transition: 'all 0.2s ease'
     }
 };
 
