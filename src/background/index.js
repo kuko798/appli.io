@@ -1,12 +1,32 @@
-
-import Classifier from './classifier.js';
+import Groq from './groq.js';
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.action === "sync") {
         startSync(msg.range).then((result) => {
             sendResponse(result);
         });
-        return true; // Keep channel open for async response
+        return true;
+    }
+
+    if (msg.action === "SAVE_JOB_FROM_CONTENT") {
+        saveJob({
+            id: "AUTO_" + Date.now(), // Generate unique ID
+            company: msg.data.company,
+            title: msg.data.role,
+            subject: `[Auto-Log] Application to ${msg.data.company}`,
+            status: "Applied",
+            date: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+        }).then(() => {
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icon.png',
+                title: 'Application Logged! 🚀',
+                message: `Saved: ${msg.data.role} at ${msg.data.company}`
+            });
+            sendResponse("success");
+        });
+        return true;
     }
 });
 
@@ -31,6 +51,7 @@ async function startSync(range) {
 async function syncEmails(range = "1m") {
     const token = await getToken();
     if (!token) throw new Error("Could not get auth token");
+
 
     // Calculate Date
     const dateObj = new Date();
@@ -89,27 +110,46 @@ async function syncEmails(range = "1m") {
                         continue;
                     }
 
-                    // 2. EXTRACTION: Extract role using ML classifier
-                    const extractedRole = Classifier.extractRole(subject, fullBody);
+                    // 2-5. INTELLIGENCE: Groq (LLaMA 3.3)
+                    let newStatus = "Applied";
+                    let extractedRole = null;
+                    let extractedCompany = null;
 
-                    // 3. FILTER: Skip if no role found (likely not a job email)
+                    try {
+                        const settings = await new Promise(resolve => {
+                            chrome.storage.sync.get({
+                                groqApiKey: ''
+                            }, resolve);
+                        });
+
+                        const analysis = await Groq.analyzeEmail(settings.groqApiKey, subject, fullBody);
+
+                        newStatus = analysis.status || "Applied";
+                        extractedRole = analysis.role;
+                        extractedCompany = analysis.company;
+                        console.log(`✨ Groq Analysis for "${subject.substring(0, 30)}...":`, analysis);
+                    } catch (error) {
+                        console.error("Groq Analysis error:", error);
+                        continue; // Skip if analysis fails
+                    }
+
+                    // Fallback filtering if still no role found
                     if (!extractedRole) {
                         console.log("Skipping - no role found:", subject);
                         continue;
                     }
 
-                    // 4. EXTRACTION: Get company details
-                    const { company } = extractJobDetails(from, subject);
-
-                    // 5. ML Prediction for status
-                    const newStatus = Classifier.predict(subject + " " + fullBody);
+                    if (!extractedCompany) {
+                        const details = extractJobDetails(from, subject);
+                        extractedCompany = details.company;
+                    }
 
                     // 6. SAVE: Handle de-duplication
                     await saveJob({
                         id: msg.id,
-                        company,
-                        title: extractedRole, // Use ML-extracted role
-                        subject, // Keep original subject for reference
+                        company: extractedCompany,
+                        title: extractedRole,
+                        subject,
                         status: newStatus,
                         date,
                         lastUpdated: new Date().toISOString()
@@ -129,15 +169,24 @@ async function syncEmails(range = "1m") {
 /* ---------- INTELLIGENCE LOGIC ---------- */
 
 function isPromotional(subject, body, from) {
-    const text = (subject + " " + body + " " + from).toLowerCase();
-    const badWords = [
-        "newsletter", "job alert", "recommended for you", "digest",
-        "courses", "webinar", "subscribe", "job recommendations",
-        "matches for you", "new jobs", "marketing", "promo",
-        "coursera", "sale", "save $", "ends soon", "limited time",
-        "discount", "% off", "black friday", "cyber monday"
+    const s = subject.toLowerCase();
+    const f = from.toLowerCase();
+
+    // High-confidence promotional subjects/senders
+    const badSubjects = [
+        "newsletter", "job recommendations", "digest", "webinar",
+        "matches for you", "marketing", "promo", "coursera",
+        "discount", "% off", "black friday", "cyber monday",
+        "exclusive offer", "save $", "ends soon"
     ];
-    return badWords.some(w => text.includes(w));
+
+    if (badSubjects.some(w => s.includes(w))) return true;
+
+    // Check if it's from a known automated alert system that isn't a direct recruiter
+    const badSenders = ["noreply@glassdoor.com", "notifications@linkedin.com", "jobalerts-noreply@linkedin.com"];
+    if (badSenders.some(w => f.includes(w))) return true;
+
+    return false;
 }
 
 function extractJobDetails(from, subject) {

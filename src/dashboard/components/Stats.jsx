@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-const Stats = ({ jobs = [], activeFilter = null, onFilterClick = () => { } }) => {
+const Stats = ({ jobs = [], activeFilter = null, onFilterClick = () => { }, onHover = () => { } }) => {
     const stats = {
         total: jobs.length,
         applied: jobs.filter(j => j.status === 'Applied').length,
@@ -11,11 +11,11 @@ const Stats = ({ jobs = [], activeFilter = null, onFilterClick = () => { } }) =>
     };
 
     const cards = [
-        { label: 'Total', count: stats.total, color: '#a78bfa', status: null },
-        { label: 'Applied', count: stats.applied, color: '#60a5fa', status: 'Applied' },
-        { label: 'Interview', count: stats.interview, color: '#fbbf24', status: 'Interview' },
-        { label: 'Offer', count: stats.offer, color: '#34d399', status: 'Offer' },
-        { label: 'Rejected', count: stats.rejected, color: '#f87171', status: 'Rejected' }
+        { label: 'DATA_TOTAL', count: stats.total, color: '#a78bfa', status: null },
+        { label: 'STATUS_APPLIED', count: stats.applied, color: '#60a5fa', status: 'Applied' },
+        { label: 'STATUS_INTERVIEW', count: stats.interview, color: '#fbbf24', status: 'Interview' },
+        { label: 'STATUS_OFFER', count: stats.offer, color: '#00ff9d', status: 'Offer' },
+        { label: 'STATUS_REJECTED', count: stats.rejected, color: '#ff0055', status: 'Rejected' }
     ];
 
     return (
@@ -26,41 +26,52 @@ const Stats = ({ jobs = [], activeFilter = null, onFilterClick = () => { } }) =>
                     {...card}
                     isActive={activeFilter === card.status}
                     onClick={() => onFilterClick(card.status)}
+                    onMouseEnter={() => onHover(card.status)}
+                    onMouseLeave={() => onHover(null)}
                 />
             ))}
         </div>
     );
 };
 
-const StatCard = ({ label, count, color, isActive, onClick }) => (
+const StatCard = ({ label, count, color, isActive, onClick, onMouseEnter, onMouseLeave }) => (
     <div
         style={{
             ...styles.card,
-            color: color,
             cursor: 'pointer',
-            transform: isActive ? 'translateY(-8px) scale(1.02)' : 'translateY(0)',
-            boxShadow: isActive
-                ? `0 12px 40px ${color}40, inset 0 0 0 2px ${color}`
-                : '0 4px 20px rgba(0, 0, 0, 0.2)',
-            background: isActive
-                ? `linear-gradient(135deg, ${color}20, ${color}10)`
-                : 'rgba(255, 255, 255, 0.05)'
+            border: `1px solid ${isActive ? color : 'rgba(255, 255, 255, 0.1)'}`,
+            boxShadow: isActive ? `0 0 20px ${color}30, inset 0 0 10px ${color}10` : 'none',
+            background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+            transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)'
         }}
         onClick={onClick}
         onMouseEnter={(e) => {
+            onMouseEnter();
             if (!isActive) {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = `0 8px 30px ${color}30`;
+                e.currentTarget.style.border = `1px solid ${color}80`;
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                e.currentTarget.style.boxShadow = `0 0 15px ${color}20`;
             }
+            const scanLine = e.currentTarget.querySelector('.scan-line');
+            if (scanLine) scanLine.style.display = 'block';
         }}
         onMouseLeave={(e) => {
+            onMouseLeave();
             if (!isActive) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.2)';
+                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                e.currentTarget.style.boxShadow = 'none';
             }
+            const scanLine = e.currentTarget.querySelector('.scan-line');
+            if (scanLine) scanLine.style.display = 'none';
         }}
     >
-        <div style={styles.count}>{count}</div>
+        <div style={styles.corners}>
+            <div style={{ ...styles.corner, top: -1, left: -1, borderTop: `2px solid ${color}`, borderLeft: `2px solid ${color}` }}></div>
+            <div style={{ ...styles.corner, bottom: -1, right: -1, borderBottom: `2px solid ${color}`, borderRight: `2px solid ${color}` }}></div>
+        </div>
+        <div className="scan-line" style={{ ...styles.statScan, background: `linear-gradient(to bottom, transparent, ${color}, transparent)` }}></div>
+        <div style={{ ...styles.count, color: color }}>{count.toString().padStart(2, '0')}</div>
         <div style={styles.label}>{label}</div>
     </div>
 );
@@ -68,35 +79,64 @@ const StatCard = ({ label, count, color, isActive, onClick }) => (
 const styles = {
     container: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
         gap: '20px',
-        marginBottom: '30px',
         maxWidth: '1400px',
-        margin: '0 auto 30px'
+        margin: '0 auto 40px',
+        position: 'relative',
+        zIndex: 2
     },
     card: {
-        padding: '30px',
-        borderRadius: '20px',
+        padding: '35px 25px',
+        borderRadius: '4px',
         textAlign: 'center',
-        background: 'rgba(255, 255, 255, 0.05)',
+        background: 'rgba(255, 255, 255, 0.03)',
         backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        transition: 'all 0.3s ease',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
         overflow: 'hidden'
     },
+    statScan: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '2px',
+        opacity: 0.5,
+        zIndex: 3,
+        display: 'none',
+        pointerEvents: 'none',
+        animation: 'scan 2s linear infinite'
+    },
+    corners: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        pointerEvents: 'none'
+    },
+    corner: {
+        position: 'absolute',
+        width: '10px',
+        height: '10px'
+    },
     count: {
-        fontSize: '48px',
-        fontWeight: '700',
-        marginBottom: '8px',
-        textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
+        fontSize: '56px',
+        fontWeight: '900',
+        marginBottom: '10px',
+        fontFamily: '"Roboto Mono", monospace',
+        letterSpacing: '-2px',
+        textShadow: '0 0 15px currentColor'
     },
     label: {
-        fontSize: '12px',
+        fontSize: '11px',
         textTransform: 'uppercase',
-        fontWeight: '700',
-        letterSpacing: '1.5px',
-        opacity: 0.9
+        fontWeight: '800',
+        letterSpacing: '2px',
+        opacity: 0.7,
+        fontFamily: '"Roboto Mono", monospace',
+        color: '#fff'
     }
 };
 

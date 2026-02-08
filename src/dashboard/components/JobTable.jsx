@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 
 const ITEMS_PER_PAGE = 20;
 
-const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onDeleteJob = () => { } }) => {
+const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onDeleteJob = () => { }, onSimulateJob = () => { }, onDeepScan = () => { } }) => {
     const [currentPage, setCurrentPage] = useState(1);
 
     const filteredAndSortedJobs = useMemo(() => {
@@ -26,70 +26,113 @@ const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onD
         onUpdateJob(jobId, { status: newStatus });
     };
 
+    const isJobCold = (date) => {
+        const lastDate = new Date(date);
+        const now = new Date();
+        const diff = (now - lastDate) / (1000 * 60 * 60 * 24);
+        return diff > 10;
+    };
+
     if (jobs.length === 0) {
-        return <div style={styles.empty}>No applications found. Sync to get started!</div>;
+        return (
+            <div style={styles.empty}>
+                <div style={styles.emptyGlitch}>NO_DATA_DETECTED</div>
+                <div style={styles.emptySub}>SYNC_REQUIRED_FOR_INITIALIZATION</div>
+            </div>
+        );
     }
 
     return (
         <div style={styles.container}>
+            <div style={styles.tableHeader}>
+                <div style={styles.headerLabel}>ACTIVE_DATA_FEED</div>
+                <div style={styles.headerDecoration}></div>
+            </div>
             <table style={styles.table}>
                 <thead>
                     <tr>
-                        <th style={styles.th}>Company</th>
-                        <th style={styles.th}>Role</th>
-                        <th style={styles.th}>Subject</th>
-                        <th style={styles.th}>Status</th>
-                        <th style={styles.th}>Date</th>
-                        <th style={styles.th}>Actions</th>
+                        <th style={styles.th}>COMPANY_NAME</th>
+                        <th style={styles.th}>ASSIGNED_ROLE</th>
+                        <th style={styles.th}>DATA_SUBJECT</th>
+                        <th style={styles.th}>NODE_STATUS</th>
+                        <th style={styles.th}>TIMESTAMP</th>
+                        <th style={styles.th}>CMD</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {currentJobs.map((job) => (
-                        <tr
-                            key={job.id}
-                            style={styles.tr}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                            }}
-                        >
-                            <td style={styles.td}>{job.company || 'Unknown'}</td>
-                            <td style={{ ...styles.td, fontWeight: '600', color: '#a78bfa' }}>{job.title || 'N/A'}</td>
-                            <td style={styles.td}>{job.subject}</td>
-                            <td style={styles.td}>
-                                <select
-                                    value={job.status}
-                                    onChange={(e) => handleStatusChange(job.id, e.target.value)}
-                                    style={getStatusSelectStyle(job.status)}
-                                >
-                                    <option value="Applied">Applied</option>
-                                    <option value="Interview">Interview</option>
-                                    <option value="Offer">Offer</option>
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </td>
-                            <td style={styles.td}>{new Date(job.date).toLocaleDateString()}</td>
-                            <td style={styles.td}>
-                                <button
-                                    onClick={() => onDeleteJob(job.id)}
-                                    style={styles.deleteBtn}
-                                    title="Delete job"
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(248, 113, 113, 0.2)';
-                                        e.currentTarget.style.borderColor = 'rgba(248, 113, 113, 0.5)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(248, 113, 113, 0.1)';
-                                        e.currentTarget.style.borderColor = 'rgba(248, 113, 113, 0.3)';
-                                    }}
-                                >
-                                    🗑️
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
+                    {currentJobs.map((job) => {
+                        const cold = isJobCold(job.date);
+                        const canTrain = job.status === 'Interview';
+                        const showSimBtn = cold || canTrain;
+
+                        return (
+                            <tr
+                                key={job.id}
+                                style={{ ...styles.tr, borderLeft: cold ? '4px solid #ff0055' : '1px solid transparent' }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(0, 242, 255, 0.08)';
+                                    e.currentTarget.style.transform = 'scale(1.005) translateX(5px)';
+                                    e.currentTarget.style.boxShadow = cold ? '0 0 15px rgba(255,0,85,0.3)' : 'inset 4px 0 0 #00f2ff';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                    e.currentTarget.style.transform = 'scale(1) translateX(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <td style={styles.td}>{job.company || 'UNKNOWN'}</td>
+                                <td style={{ ...styles.td, fontWeight: '700', color: '#00f2ff' }}>{job.title || 'NULL'}</td>
+                                <td style={{ ...styles.td, opacity: 0.6 }}>{job.subject}</td>
+                                <td style={styles.td}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <select
+                                            value={job.status}
+                                            onChange={(e) => handleStatusChange(job.id, e.target.value)}
+                                            style={getStatusSelectStyle(job.status)}
+                                        >
+                                            <option value="Applied">APPLIED</option>
+                                            <option value="Interview">INTERVIEW</option>
+                                            <option value="Offer">OFFER</option>
+                                            <option value="Rejected">REJECTED</option>
+                                        </select>
+                                        {cold && (
+                                            <div style={styles.coldIndicator} title="SIGNAL_LOST: Lead has gone cold (10+ days)">!</div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td style={{ ...styles.td, fontFamily: '"Roboto Mono", monospace', fontSize: '12px' }}>
+                                    {new Date(job.date).toLocaleDateString(undefined, { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\//g, '.')}
+                                </td>
+                                <td style={styles.td}>
+                                    <div style={styles.cmdGroup}>
+                                        <button
+                                            onClick={() => onDeepScan(job)}
+                                            style={styles.intelBtn}
+                                            title="DEEP_SCAN_TARGET"
+                                        >
+                                            INTEL
+                                        </button>
+                                        {showSimBtn && (
+                                            <button
+                                                onClick={() => onSimulateJob(job, cold ? 'follow-up' : 'interview')}
+                                                style={{ ...styles.simBtn, borderColor: cold ? '#ff0055' : '#00f2ff', color: cold ? '#ff0055' : '#00f2ff' }}
+                                                title={cold ? "GENERATE_SIGNAL_BOOSTER" : "INITIATE_TRAINING_SIM"}
+                                            >
+                                                {cold ? 'SIGNAL' : 'TRAIN'}
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => onDeleteJob(job.id)}
+                                            style={styles.deleteBtn}
+                                            title="TERMINATE_RECORD"
+                                        >
+                                            DEL
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
 
@@ -100,41 +143,25 @@ const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onD
                         disabled={currentPage === 1}
                         style={{
                             ...styles.pageBtn,
-                            opacity: currentPage === 1 ? 0.5 : 1,
+                            opacity: currentPage === 1 ? 0.3 : 1,
                             cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
                         }}
-                        onMouseEnter={(e) => {
-                            if (currentPage !== 1) {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                        }}
                     >
-                        Previous
+                        &lt; PREV
                     </button>
                     <span style={styles.pageInfo}>
-                        Page {currentPage} of {totalPages}
+                        SEQ {currentPage.toString().padStart(2, '0')}/{totalPages.toString().padStart(2, '0')}
                     </span>
                     <button
                         onClick={handleNext}
                         disabled={currentPage === totalPages}
                         style={{
                             ...styles.pageBtn,
-                            opacity: currentPage === totalPages ? 0.5 : 1,
+                            opacity: currentPage === totalPages ? 0.3 : 1,
                             cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
                         }}
-                        onMouseEnter={(e) => {
-                            if (currentPage !== totalPages) {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                        }}
                     >
-                        Next
+                        NEXT &gt;
                     </button>
                 </div>
             )}
@@ -144,25 +171,27 @@ const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onD
 
 const getStatusSelectStyle = (status) => {
     const baseColors = {
-        'Applied': { bg: 'rgba(96, 165, 250, 0.2)', color: '#60a5fa' },
-        'Interview': { bg: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24' },
-        'Offer': { bg: 'rgba(52, 211, 153, 0.2)', color: '#34d399' },
-        'Rejected': { bg: 'rgba(248, 113, 113, 0.2)', color: '#f87171' }
+        'Applied': { border: '#60a5fa', color: '#60a5fa' },
+        'Interview': { border: '#fbbf24', color: '#fbbf24' },
+        'Offer': { border: '#00ff9d', color: '#00ff9d' },
+        'Rejected': { border: '#ff0055', color: '#ff0055' }
     };
 
     const colors = baseColors[status] || baseColors['Applied'];
 
     return {
-        padding: '8px 12px',
-        borderRadius: '10px',
-        fontSize: '13px',
-        fontWeight: '600',
-        border: `1px solid ${colors.color}40`,
-        backgroundColor: colors.bg,
+        padding: '4px 8px',
+        borderRadius: '2px',
+        fontSize: '11px',
+        fontWeight: '800',
+        border: `1px solid ${colors.border}`,
+        backgroundColor: 'transparent',
         color: colors.color,
         cursor: 'pointer',
         outline: 'none',
-        transition: 'all 0.2s ease'
+        fontFamily: '"Roboto Mono", monospace',
+        transition: 'all 0.2s ease',
+        textShadow: `0 0 5px ${colors.color}80`
     };
 };
 
@@ -170,83 +199,165 @@ const styles = {
     container: {
         maxWidth: '1400px',
         margin: '0 auto',
-        background: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '20px',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: 'rgba(15, 17, 34, 0.6)',
+        backdropFilter: 'blur(15px)',
+        borderRadius: '4px',
+        border: '1px solid rgba(0, 242, 255, 0.2)',
         overflow: 'hidden',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.4)',
+        zIndex: 2,
+        position: 'relative'
+    },
+    tableHeader: {
+        padding: '15px 25px',
+        background: 'rgba(0, 242, 255, 0.05)',
+        borderBottom: '1px solid rgba(0, 242, 255, 0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+    },
+    headerLabel: {
+        fontSize: '12px',
+        fontWeight: '900',
+        color: '#00f2ff',
+        fontFamily: '"Roboto Mono", monospace',
+        letterSpacing: '1px'
+    },
+    headerDecoration: {
+        height: '2px',
+        width: '50px',
+        background: 'linear-gradient(90deg, #00f2ff, transparent)'
     },
     empty: {
         textAlign: 'center',
-        padding: '60px',
-        color: 'rgba(255, 255, 255, 0.6)',
-        fontSize: '16px',
+        padding: '80px 20px',
+        color: '#00f2ff',
         maxWidth: '1400px',
         margin: '0 auto',
-        background: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '20px',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
+        background: 'rgba(15, 17, 34, 0.6)',
+        backdropFilter: 'blur(15px)',
+        borderRadius: '4px',
+        border: '1px solid rgba(0, 242, 255, 0.2)',
+        fontFamily: '"Roboto Mono", monospace'
+    },
+    emptyGlitch: {
+        fontSize: '24px',
+        fontWeight: '900',
+        letterSpacing: '4px',
+        marginBottom: '10px'
+    },
+    emptySub: {
+        fontSize: '12px',
+        opacity: 0.6,
+        letterSpacing: '1px'
     },
     table: {
         width: '100%',
-        borderCollapse: 'collapse'
+        borderCollapse: 'collapse',
+        fontFamily: '"Inter", sans-serif'
     },
     th: {
         textAlign: 'left',
-        padding: '20px',
-        background: 'rgba(255, 255, 255, 0.03)',
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontWeight: '700',
-        fontSize: '12px',
+        padding: '20px 25px',
+        background: 'rgba(255, 255, 255, 0.02)',
+        color: 'rgba(255, 255, 255, 0.5)',
+        fontWeight: '800',
+        fontSize: '11px',
         textTransform: 'uppercase',
-        letterSpacing: '1px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+        letterSpacing: '2px',
+        fontFamily: '"Roboto Mono", monospace',
+        borderBottom: '1px solid rgba(0, 242, 255, 0.1)'
     },
     tr: {
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-        transition: 'all 0.2s ease'
+        transition: 'all 0.2s ease',
+        borderLeft: '4px solid transparent'
     },
     td: {
-        padding: '18px 20px',
-        color: 'rgba(255, 255, 255, 0.9)',
+        padding: '20px 25px',
+        color: '#fff',
         fontSize: '14px'
     },
     pagination: {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: '20px',
-        padding: '25px',
-        background: 'rgba(255, 255, 255, 0.02)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+        gap: '40px',
+        padding: '30px',
+        background: 'rgba(0, 242, 255, 0.03)',
+        borderTop: '1px solid rgba(0, 242, 255, 0.1)'
     },
     pageBtn: {
-        padding: '10px 20px',
-        background: 'rgba(255, 255, 255, 0.1)',
-        color: 'white',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '10px',
+        padding: '8px 16px',
+        background: 'transparent',
+        color: '#00f2ff',
+        border: '1px solid rgba(0, 242, 255, 0.3)',
+        borderRadius: '2px',
         cursor: 'pointer',
-        fontWeight: '600',
-        fontSize: '14px',
-        transition: 'all 0.3s ease',
-        backdropFilter: 'blur(10px)'
+        fontWeight: '900',
+        fontSize: '12px',
+        fontFamily: '"Roboto Mono", monospace',
+        transition: 'all 0.3s ease'
     },
     pageInfo: {
-        fontSize: '14px',
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontWeight: '600'
+        fontSize: '12px',
+        color: '#00f2ff',
+        fontWeight: '900',
+        fontFamily: '"Roboto Mono", monospace'
+    },
+    simBtn: {
+        background: 'rgba(0, 242, 255, 0.1)',
+        border: '1px solid #00f2ff',
+        color: '#00f2ff',
+        cursor: 'pointer',
+        fontSize: '10px',
+        fontWeight: '900',
+        fontFamily: '"Roboto Mono", monospace',
+        padding: '6px 12px',
+        borderRadius: '2px',
+        transition: 'all 0.2s ease'
+    },
+    intelBtn: {
+        background: 'rgba(112, 0, 255, 0.2)',
+        border: '1px solid #7000ff',
+        color: '#d4a5ff',
+        cursor: 'pointer',
+        fontSize: '10px',
+        fontWeight: '900',
+        fontFamily: '"Roboto Mono", monospace',
+        padding: '6px 12px',
+        borderRadius: '2px',
+        transition: 'all 0.2s ease'
     },
     deleteBtn: {
-        background: 'rgba(248, 113, 113, 0.1)',
-        border: '1px solid rgba(248, 113, 113, 0.3)',
+        background: 'transparent',
+        border: '1px solid #ff005580',
+        color: '#ff0055',
         cursor: 'pointer',
-        fontSize: '18px',
+        fontSize: '10px',
+        fontWeight: '900',
+        fontFamily: '"Roboto Mono", monospace',
         padding: '6px 12px',
-        borderRadius: '8px',
+        borderRadius: '2px',
         transition: 'all 0.2s ease'
+    },
+    cmdGroup: {
+        display: 'flex',
+        gap: '8px'
+    },
+    coldIndicator: {
+        width: '18px',
+        height: '18px',
+        borderRadius: '50%',
+        background: '#ff0055',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '12px',
+        fontWeight: '900',
+        animation: 'pulse-glow 1s infinite alternate',
+        cursor: 'help'
     }
 };
 

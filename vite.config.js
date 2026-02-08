@@ -16,6 +16,15 @@ export default defineConfig({
                     src: 'icon.png',
                     dest: '.',
                     rename: 'icon.png'
+                },
+                {
+                    src: 'groq.js',
+                    dest: 'assets'
+                },
+                {
+                    src: 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
+                    dest: 'assets',
+                    rename: 'pdf.worker.min.js'
                 }
             ]
         })
@@ -26,7 +35,9 @@ export default defineConfig({
             input: {
                 popup: resolve(__dirname, 'src/popup/index.html'),
                 dashboard: resolve(__dirname, 'src/dashboard/index.html'),
-                background: resolve(__dirname, 'src/background/index.js')
+                background: resolve(__dirname, 'src/background/index.js'),
+                auto_log: resolve(__dirname, 'src/content/auto_log.js'),
+                options: resolve(__dirname, 'options.html')
             },
             output: {
                 entryFileNames: 'assets/[name].js',

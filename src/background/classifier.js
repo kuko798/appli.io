@@ -1,3 +1,4 @@
+import Gemini from './gemini.js';
 
 const Classifier = {
     // Pre-calculated probabilities (Naive Bayes Model)
@@ -129,6 +130,28 @@ const Classifier = {
         }
 
         return maxLabel;
+    },
+
+    /**
+     * Advanced prediction and extraction using Gemini.
+     */
+    predictWithGemini: async function (apiKey, subject, body) {
+        try {
+            const result = await Gemini.analyzeEmail(apiKey, subject, body);
+            return {
+                status: result.status || "Applied",
+                role: result.role,
+                company: result.company
+            };
+        } catch (error) {
+            console.warn("Gemini prediction failed, falling back to regex:", error);
+            // Fallback to existing logic
+            return {
+                status: this.predict(subject + " " + body),
+                role: this.extractRole(subject, body),
+                company: null // Current regex doesn't reliably extract company
+            };
+        }
     },
 
     // Extract job role from text using pattern matching

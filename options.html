@@ -1,31 +1,91 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Appli.io Options</title>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
-    label { display: block; margin-bottom: 8px; font-weight: bold; }
-    input[type="text"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
-    button { background-color: #4285f4; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-    button:hover { background-color: #357abd; }
-    #status { margin-top: 10px; color: green; font-weight: bold; }
-    .help-text { font-size: 0.9em; color: #666; margin-bottom: 10px; }
-    code { background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #357abd;
+    }
+
+    #status {
+      margin-top: 10px;
+      color: green;
+      font-weight: bold;
+    }
+
+    .help-text {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    code {
+      background-color: #f0f0f0;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
   </style>
 </head>
+
 <body>
   <h2>Appli.io Settings</h2>
-  
+
   <label for="spreadsheetId">Google Spreadsheet ID</label>
   <div class="help-text">
-    Open your Google Sheet and copy the ID from the URL:<br>
+    Copy the ID from your Google Sheet URL:<br>
     <code>https://docs.google.com/spreadsheets/d/<b>YOUR_ID_HERE</b>/edit</code>
   </div>
   <input type="text" id="spreadsheetId" placeholder="e.g. 1W6k3fbYj-W27kCwV5myjrEPcZ1rmrCSgRvKdBwLDuTY">
 
-  <button id="save">Save Options</button>
-  <div id="status"></div>
+  <label for="groqApiKey">Groq API Key (LLaMA 3 Pro)</label>
+  <div class="help-text">
+    Get your free key from <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>.<br>
+    LLaMA 3 provides professional-grade extraction for free.
+  </div>
+  <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px;">
+    <input type="password" id="groqApiKey" placeholder="Enter your Groq API key" style="margin-bottom: 0; flex: 1;">
+    <button id="verify" style="background-color: #6b7280; padding: 9px 15px;">Verify</button>
+  </div>
+  <div id="keyStatus" style="font-size: 0.85em; margin-bottom: 16px; height: 1.2em;"></div>
 
-  <script src="options.js"></script>
+  <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+    <button id="save" style="width: 100%;">Save Settings</button>
+  </div>
+  <div id="status" style="text-align: center; margin-top: 10px;"></div>
+
+  <script type="module" src="options.js"></script>
 </body>
+
 </html>
