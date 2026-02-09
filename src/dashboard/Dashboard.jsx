@@ -18,6 +18,8 @@ function Dashboard() {
     const [simulationMode, setSimulationMode] = useState('interview');
     const [scanningJob, setScanningJob] = useState(null);
     const [isAuthorized, setIsAuthorized] = useState(null);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncStatus, setSyncStatus] = useState("");
 
     const statusColors = {
         'Applied': '#60a5fa',
@@ -81,6 +83,18 @@ function Dashboard() {
     const handleSimulateRequest = (job, mode = 'interview') => {
         setSimulationMode(mode);
         setSimulatingJob(job);
+    };
+
+    const handleGmailSync = () => {
+        setIsSyncing(true);
+        setSyncStatus("GMAIL_SYNC_ACTIVE...");
+
+        chrome.runtime.sendMessage({ action: "sync", range: "1m" }, (response) => {
+            setSyncStatus(response || "SYNC_COMPLETE");
+            setIsSyncing(false);
+            loadJobs();
+            setTimeout(() => setSyncStatus(""), 5000);
+        });
     };
 
     useEffect(() => {
@@ -200,8 +214,8 @@ function Dashboard() {
                 <div style={styles.titleContainer}>
                     <h1 style={{ ...styles.title, textShadow: `0 0 15px ${currentGlow}50` }}>APPLI.IO <span style={styles.version}>v1.0</span></h1>
                     <div style={{ ...styles.statusIndicator, color: currentGlow }}>
-                        <div style={{ ...styles.pulse, backgroundColor: currentGlow, boxShadow: `0 0 10px ${currentGlow}` }}></div>
-                        {hoveredStatus ? `DATA_FOCUS: ${hoveredStatus.toUpperCase()}` : 'SYSTEM_READY'}
+                        <div style={{ ...styles.pulse, backgroundColor: isSyncing ? '#00f2ff' : currentGlow, boxShadow: `0 0 10px ${isSyncing ? '#00f2ff' : currentGlow}` }}></div>
+                        {isSyncing ? 'SYNC_IN_PROGRESS' : (hoveredStatus ? `DATA_FOCUS: ${hoveredStatus.toUpperCase()}` : (syncStatus || 'SYSTEM_READY'))}
                     </div>
                 </div>
                 <div style={styles.headerButtons}>
@@ -220,11 +234,19 @@ function Dashboard() {
                         <span>+ ADD_JOB</span>
                     </button>
                     <button
-                        onClick={loadJobs}
-                        style={{ ...styles.refreshBtn, color: currentGlow, borderColor: `${currentGlow}40`, background: `${currentGlow}10` }}
+                        onClick={handleGmailSync}
+                        disabled={isSyncing}
+                        style={{
+                            ...styles.refreshBtn,
+                            color: isSyncing ? '#00f2ff' : currentGlow,
+                            borderColor: isSyncing ? '#00f2ff40' : `${currentGlow}40`,
+                            background: isSyncing ? 'rgba(0, 242, 255, 0.1)' : `${currentGlow}10`,
+                            opacity: isSyncing ? 0.7 : 1,
+                            cursor: isSyncing ? 'wait' : 'pointer'
+                        }}
                         className="glitch-hover"
                     >
-                        SYNC_DATA
+                        {isSyncing ? "SYNCING..." : "SYNC_GMAIL"}
                     </button>
                 </div>
             </header>
