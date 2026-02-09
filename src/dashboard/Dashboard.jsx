@@ -20,6 +20,7 @@ function Dashboard() {
     const [isAuthorized, setIsAuthorized] = useState(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncStatus, setSyncStatus] = useState("");
+    const [syncRange, setSyncRange] = useState("1m");
 
     const statusColors = {
         'Applied': '#60a5fa',
@@ -89,7 +90,7 @@ function Dashboard() {
         setIsSyncing(true);
         setSyncStatus("GMAIL_SYNC_ACTIVE...");
 
-        chrome.runtime.sendMessage({ action: "sync", range: "1m" }, (response) => {
+        chrome.runtime.sendMessage({ action: "sync", range: syncRange }, (response) => {
             setSyncStatus(response || "SYNC_COMPLETE");
             setIsSyncing(false);
             loadJobs();
@@ -220,6 +221,13 @@ function Dashboard() {
                 </div>
                 <div style={styles.headerButtons}>
                     <button
+                        onClick={() => chrome.runtime.openOptionsPage()}
+                        style={{ ...styles.diagnosticBtn, color: '#f59e0b', borderColor: '#f59e0b40', background: 'rgba(245, 158, 11, 0.05)' }}
+                        className="glitch-hover"
+                    >
+                        CONFIG_API_KEY
+                    </button>
+                    <button
                         onClick={() => setShowResumeDiagnostic(true)}
                         style={{ ...styles.diagnosticBtn, color: '#00f2ff', borderColor: '#00f2ff40', background: 'rgba(0, 242, 255, 0.05)' }}
                         className="glitch-hover"
@@ -233,21 +241,33 @@ function Dashboard() {
                     >
                         <span>+ ADD_JOB</span>
                     </button>
-                    <button
-                        onClick={handleGmailSync}
-                        disabled={isSyncing}
-                        style={{
-                            ...styles.refreshBtn,
-                            color: isSyncing ? '#00f2ff' : currentGlow,
-                            borderColor: isSyncing ? '#00f2ff40' : `${currentGlow}40`,
-                            background: isSyncing ? 'rgba(0, 242, 255, 0.1)' : `${currentGlow}10`,
-                            opacity: isSyncing ? 0.7 : 1,
-                            cursor: isSyncing ? 'wait' : 'pointer'
-                        }}
-                        className="glitch-hover"
-                    >
-                        {isSyncing ? "SYNCING..." : "SYNC_GMAIL"}
-                    </button>
+                    <div style={styles.syncContainer}>
+                        <select
+                            value={syncRange}
+                            onChange={(e) => setSyncRange(e.target.value)}
+                            style={{ ...styles.rangeSelect, color: currentGlow, borderColor: `${currentGlow}40` }}
+                        >
+                            <option value="1m">30D</option>
+                            <option value="3m">90D</option>
+                            <option value="6m">180D</option>
+                            <option value="1y">1Y</option>
+                        </select>
+                        <button
+                            onClick={handleGmailSync}
+                            disabled={isSyncing}
+                            style={{
+                                ...styles.refreshBtn,
+                                color: isSyncing ? '#00f2ff' : currentGlow,
+                                borderColor: isSyncing ? '#00f2ff40' : `${currentGlow}40`,
+                                background: isSyncing ? 'rgba(0, 242, 255, 0.1)' : `${currentGlow}10`,
+                                opacity: isSyncing ? 0.7 : 1,
+                                cursor: isSyncing ? 'wait' : 'pointer'
+                            }}
+                            className="glitch-hover"
+                        >
+                            {isSyncing ? "SYNCING..." : "SYNC_GMAIL"}
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -311,6 +331,8 @@ const styles = {
     headerButtons: { display: 'flex', gap: '15px' },
     diagnosticBtn: { padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '13px', fontFamily: '"Roboto Mono", monospace', transition: 'all 0.3s ease', textTransform: 'uppercase', border: '1px solid #00f2ff40' },
     addBtn: { background: 'transparent', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '13px', fontFamily: '"Roboto Mono", monospace', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', position: 'relative', overflow: 'hidden', textTransform: 'uppercase' },
+    syncContainer: { display: 'flex', gap: '8px', alignItems: 'stretch' },
+    rangeSelect: { background: 'rgba(15, 17, 34, 0.6)', padding: '0 10px', borderRadius: '8px', border: '1px solid', fontSize: '12px', fontWeight: 'bold', fontFamily: '"Roboto Mono", monospace', color: '#fff', cursor: 'pointer', outline: 'none' },
     refreshBtn: { padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', fontFamily: '"Roboto Mono", monospace', transition: 'all 0.3s ease', textTransform: 'uppercase' }
 };
 
