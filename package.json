@@ -5,7 +5,8 @@
     "description": "Job Application Tracker Extension",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "build:demo": "vite build -c vite.demo.config.js"
     },
     "dependencies": {
         "lucide-react": "^0.344.0",

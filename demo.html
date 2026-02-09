@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Appli.io - Interactive Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Roboto+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #020308;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        @keyframes glitch {
+            0% {
+                transform: translate(0);
+            }
+
+            20% {
+                transform: translate(-2px, 2px);
+            }
+
+            40% {
+                transform: translate(-2px, -2px);
+            }
+
+            60% {
+                transform: translate(2px, 2px);
+            }
+
+            80% {
+                transform: translate(2px, -2px);
+            }
+
+            100% {
+                transform: translate(0);
+            }
+        }
+
+        @keyframes scan {
+            0% {
+                transform: translateY(-100%);
+            }
+
+            100% {
+                transform: translateY(100%);
+            }
+        }
+
+        @keyframes drift {
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(-1000px);
+            }
+        }
+
+        @keyframes twinkle {
+
+            0%,
+            100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        @keyframes shootingStar {
+            0% {
+                transform: translate(-200px, -200px) rotate(45deg);
+                opacity: 1;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            30% {
+                transform: translate(1200px, 1200px) rotate(45deg);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translate(1200px, 1200px) rotate(45deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes nebulaPulse {
+
+            0%,
+            100% {
+                opacity: 0.4;
+                filter: blur(60px) scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                filter: blur(80px) scale(1.1);
+            }
+        }
+
+        .glitch-hover:hover {
+            animation: glitch 0.2s infinite;
+            text-shadow: 2px 0 #ff0055, -2px 0 #00f2ff;
+        }
+
+        .shooting-star {
+            position: fixed;
+            width: 2px;
+            height: 100px;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
+            animation: shootingStar 10s linear infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/mocks/chrome.js"></script>
+    <script type="module" src="/src/dashboard/main.jsx"></script>
+</body>
+
+</html>
