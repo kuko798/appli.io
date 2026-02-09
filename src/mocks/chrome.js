@@ -81,9 +81,15 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
         runtime: {
             getURL: (path) => path, // Just return the path as-is for web
             openOptionsPage: () => {
-                const key = prompt("Enter a simulated API Key (or leave blank):", "gsk_demo_key_123");
+                const key = prompt("SYSTEM_INPUT_REQUIRED: Enter your valid Groq API Key (starts with gsk_)\n\nNote: Demo storage is separate from your extension storage.", "");
                 if (key !== null) {
-                    window.chrome.storage.sync.set({ groqApiKey: key }, () => window.location.reload());
+                    const trimmedKey = key.trim();
+                    if (!trimmedKey.startsWith('gsk_')) {
+                        alert("ERROR: Invalid format. Groq keys must start with 'gsk_'.");
+                        return;
+                    }
+                    console.log('[Mock] Saving API Key:', trimmedKey.substring(0, 10) + '...');
+                    window.chrome.storage.sync.set({ groqApiKey: trimmedKey }, () => window.location.reload());
                 }
             },
             onMessage: { addListener: () => { } },
