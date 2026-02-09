@@ -4,7 +4,7 @@ import { gmailService } from '../services/gmailService.js';
 if (typeof chrome === 'undefined' || !chrome.storage) {
     console.log('[Mock] Initializing Chrome API Mock for Web Demo');
 
-    const CLIENT_ID = "1097794489757-u3p40a52bjb2h8hi7t2gspephtluf9ui.apps.googleusercontent.com";
+    const CLIENT_ID = "1097794489757-qglg0t731aplmm0o3cfq80bgbg4l64rl.apps.googleusercontent.com";
     let _token = null;
 
     const storageMock = (storageType) => ({
