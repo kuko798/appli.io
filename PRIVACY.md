@@ -1,6 +1,6 @@
 # Privacy Policy for Appli.io
 
-**Last Updated:** January 29, 2026
+**Last Updated:** February 9, 2026
 
 ## Overview
 Appli.io is a Chrome extension that helps users track their job applications by syncing job-related emails from Gmail and organizing them in a dashboard.
@@ -10,34 +10,36 @@ Appli.io is a Chrome extension that helps users track their job applications by 
 ### What Data We Collect
 - **Email Content**: We access job application emails from your Gmail account to extract information such as company names, job titles, application statuses, and dates.
 - **Authentication Tokens**: We use OAuth 2.0 tokens to securely access your Gmail account.
+- **API Keys**: We store your personal Groq API key locally to enable AI features.
 
 ### How We Use Your Data
-- All data is processed **locally on your device** using Chrome's local storage
-- Email content is analyzed to identify job applications and extract relevant information
-- Extracted data (company, role, status, date) is stored locally for display in the dashboard
-- **We do not transmit any data to external servers**
-- **We do not sell, share, or transfer your data to third parties**
+- All data is processed **locally on your device** using Chrome's local storage.
+- Email content is sent to **Groq's API** for analysis using your personal API key.
+- Extracted data (company, role, status, date) is stored locally for display in the dashboard.
+- **We do not store your data on our own servers.**
+- **We do not sell, share, or transfer your data to third parties.**
 
 ### Data Storage
-- All job application data is stored locally on your device using `chrome.storage.local`
-- No data is stored on external servers or databases
-- You can delete all stored data at any time by removing the extension
+- All job application data and API keys are stored locally on your device using `chrome.storage.local` and `chrome.storage.sync`.
+- No data is stored on external servers or databases controlled by us.
+- You can delete all stored data at any time by removing the extension.
 
 ### Permissions Used
 - **identity**: Required for OAuth 2.0 authentication with Google to access Gmail
-- **storage**: Required to save job application data locally on your device
+- **storage**: Required to save job application data and API keys locally on your device
 - **notifications**: Required to notify you about sync status and operations
 - **Gmail API (gmail.readonly)**: Required to read job application emails from your inbox
 
 ### Data Security
 - We use Google's OAuth 2.0 for secure authentication
-- All data processing happens locally on your device
+- All data processing happens locally or via direct connection to Groq APIs
 - We only request read-only access to Gmail
 - No passwords are stored or transmitted
 
 ### Third-Party Services
 - **Google Gmail API**: Used to read emails from your Gmail account
 - **Google OAuth 2.0**: Used for secure authentication
+- **Groq API**: Used for AI-powered email analysis and resume diagnostics. Data sent to Groq is subject to [Groq's Privacy Policy](https://groq.com/privacy/). We do not control how Groq processes data sent via your personal API key.
 
 ### Your Rights
 You have the right to:
