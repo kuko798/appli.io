@@ -8,7 +8,6 @@ const DeepScan = ({ job, onCancel }) => {
     const scrollRef = useRef(null);
 
     const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    const HARDCODED_API_KEY = ""; // User must provide key in options
 
     const steps = [
         "INITIALIZING_VORTEX_PROTOCOL...",
@@ -42,6 +41,13 @@ const DeepScan = ({ job, onCancel }) => {
 
     const fetchDeepScan = async () => {
         try {
+            const apiKey = await new Promise((resolve, reject) => {
+                chrome.storage.sync.get(['groqApiKey'], (result) => {
+                    if (result.groqApiKey) resolve(result.groqApiKey);
+                    else reject(new Error("MISSING_API_KEY"));
+                });
+            });
+
             const prompt = `
 You are a high-level corporate intelligence AI. 
 Provide a "Deep Scan" intelligence report for the company "${job.company}".
@@ -60,7 +66,7 @@ Use a techy, cyberpunk/terminal tone. Use brackets for headers.
             const response = await fetch(GROQ_API_URL, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${HARDCODED_API_KEY}`,
+                    "Authorization": `Bearer ${apiKey}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({

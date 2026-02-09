@@ -1,10 +1,9 @@
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const HARDCODED_API_KEY = ""; // User must provide key in options
 
 const Groq = {
     analyzeEmail: async function (apiKey, subject, body) {
-        const key = apiKey || HARDCODED_API_KEY;
-        if (!key) throw new Error("Groq API Key is missing");
+        if (!apiKey) throw new Error("Groq API Key is missing");
+
 
         const prompt = `
 You are an intelligent job application email classifier.
@@ -59,7 +58,7 @@ ${body.substring(0, 5000)}
             const response = await fetch(GROQ_API_URL, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${key}`,
+                    "Authorization": `Bearer ${apiKey}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({

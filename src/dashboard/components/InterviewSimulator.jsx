@@ -9,7 +9,6 @@ const InterviewSimulator = ({ job, mode = 'interview', onCancel }) => {
     const chatEndRef = useRef(null);
 
     const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    const HARDCODED_API_KEY = ""; // User must provide key in options
 
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,6 +38,13 @@ const InterviewSimulator = ({ job, mode = 'interview', onCancel }) => {
         setIsTyping(true);
 
         try {
+            const apiKey = await new Promise((resolve, reject) => {
+                chrome.storage.sync.get(['groqApiKey'], (result) => {
+                    if (result.groqApiKey) resolve(result.groqApiKey);
+                    else reject(new Error("MISSING_API_KEY"));
+                });
+            });
+
             const systemPrompt = mode === 'follow-up'
                 ? `You are an expert career coach and strategist. Help the user draft a professional, high-impact follow-up email for a ${job.role} position at ${job.company}.
                    Keep it concise, techy, and strategic. Offer 2-3 variations based on the user's input. 
@@ -49,7 +55,7 @@ const InterviewSimulator = ({ job, mode = 'interview', onCancel }) => {
             const response = await fetch(GROQ_API_URL, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${HARDCODED_API_KEY}`,
+                    "Authorization": `Bearer ${apiKey}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({

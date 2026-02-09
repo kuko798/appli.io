@@ -16,7 +16,6 @@ const ResumeDiagnostic = ({ onCancel }) => {
     const scrollRef = useRef(null);
 
     const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    const HARDCODED_API_KEY = ""; // User must provide key in options
 
     const steps = [
         "BOOTING_ARMOR_DIAGNOSTIC...",
@@ -104,10 +103,13 @@ const ResumeDiagnostic = ({ onCancel }) => {
     };
 
     const getValidKey = async () => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             chrome.storage.sync.get(['groqApiKey'], (items) => {
-                const key = items.groqApiKey || HARDCODED_API_KEY;
-                resolve(key);
+                if (items.groqApiKey) {
+                    resolve(items.groqApiKey);
+                } else {
+                    reject(new Error("INVALID_API_KEY"));
+                }
             });
         });
     };

@@ -6,6 +6,8 @@ import AddJobForm from './components/AddJobForm';
 import InterviewSimulator from './components/InterviewSimulator';
 import DeepScan from './components/DeepScan';
 import ResumeDiagnostic from './components/ResumeDiagnostic';
+import ApiKeyOnboarding from '../components/ApiKeyOnboarding';
+
 
 function Dashboard() {
     const [jobs, setJobs] = useState([]);
@@ -16,6 +18,7 @@ function Dashboard() {
     const [simulatingJob, setSimulatingJob] = useState(null);
     const [simulationMode, setSimulationMode] = useState('interview');
     const [scanningJob, setScanningJob] = useState(null);
+    const [isAuthorized, setIsAuthorized] = useState(null);
 
     const statusColors = {
         'Applied': '#60a5fa',
@@ -26,6 +29,19 @@ function Dashboard() {
     };
 
     const currentGlow = statusColors[hoveredStatus] || statusColors[null];
+
+    useEffect(() => {
+        chrome.storage.sync.get(['groqApiKey'], (result) => {
+            if (result.groqApiKey) {
+                setIsAuthorized(true);
+                loadJobs();
+            } else {
+                setIsAuthorized(false);
+            }
+        });
+
+        // Continue loading listeners only if authorized, but for simplicity we rely on the conditional return
+    }, []);
 
     const loadJobs = () => {
         chrome.storage.local.get("jobs", (result) => {
@@ -69,10 +85,8 @@ function Dashboard() {
     };
 
     useEffect(() => {
-        loadJobs();
-
         const listener = (changes, namespace) => {
-            if (namespace === 'local' && changes.jobs) {
+            if (namespace === 'local' && changes.jobs && isAuthorized) {
                 console.log("Jobs updated, reloading dashboard...");
                 loadJobs();
             }
@@ -80,7 +94,7 @@ function Dashboard() {
 
         chrome.storage.onChanged.addListener(listener);
         return () => chrome.storage.onChanged.removeListener(listener);
-    }, []);
+    }, [isAuthorized]);
 
     // Starfield generator with twinkling and drift support
     const stars = useMemo(() => {
@@ -97,6 +111,23 @@ function Dashboard() {
             large: generateStars(50)
         };
     }, []);
+
+    if (isAuthorized === null) {
+        return <div style={{ ...styles.container, background: '#020308', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ color: '#00f2ff', fontFamily: 'monospace' }}>INITIALIZING_SYSTEM...</div>
+        </div>;
+    }
+
+    if (!isAuthorized) {
+        return (
+            <div style={{ ...styles.container, background: '#020308', height: '100vh', padding: 0 }}>
+                <ApiKeyOnboarding onComplete={() => {
+                    setIsAuthorized(true);
+                    loadJobs();
+                }} />
+            </div>
+        );
+    }
 
     return (
         <div style={{ ...styles.container, background: '#020308', transition: 'background 0.8s ease' }}>
