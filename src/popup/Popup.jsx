@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import ApiKeyOnboarding from '../components/ApiKeyOnboarding';
 
 const Popup = () => {
     const [range, setRange] = useState("1m");
@@ -40,7 +39,20 @@ const Popup = () => {
     }
 
     if (!isAuthorized) {
-        return <ApiKeyOnboarding onComplete={() => setIsAuthorized(true)} />;
+        return (
+            <div style={styles.container}>
+                <div style={styles.header}>SETUP_REQUIRED</div>
+                <div style={{ ...styles.status, color: '#f59e0b', marginBottom: '15px' }}>
+                    API KEY MISSING
+                </div>
+                <button
+                    onClick={() => chrome.runtime.openOptionsPage()}
+                    style={styles.buttonPrimary}
+                >
+                    CONFIGURE_API_KEY
+                </button>
+            </div>
+        );
     }
 
     return (

@@ -1,11 +1,9 @@
 // Saves options to chrome.storage
 const saveOptions = () => {
-    const spreadsheetId = document.getElementById('spreadsheetId').value;
     const groqApiKey = document.getElementById('groqApiKey').value;
 
     chrome.storage.sync.set(
         {
-            spreadsheetId: spreadsheetId,
             groqApiKey: groqApiKey
         },
         () => {
@@ -23,11 +21,9 @@ const saveOptions = () => {
 const restoreOptions = () => {
     chrome.storage.sync.get(
         {
-            spreadsheetId: '',
             groqApiKey: ''
         },
         (items) => {
-            document.getElementById('spreadsheetId').value = items.spreadsheetId;
             document.getElementById('groqApiKey').value = items.groqApiKey;
         }
     );

@@ -6,7 +6,6 @@ import AddJobForm from './components/AddJobForm';
 import InterviewSimulator from './components/InterviewSimulator';
 import DeepScan from './components/DeepScan';
 import ResumeDiagnostic from './components/ResumeDiagnostic';
-import ApiKeyOnboarding from '../components/ApiKeyOnboarding';
 
 
 function Dashboard() {
@@ -120,11 +119,24 @@ function Dashboard() {
 
     if (!isAuthorized) {
         return (
-            <div style={{ ...styles.container, background: '#020308', height: '100vh', padding: 0 }}>
-                <ApiKeyOnboarding onComplete={() => {
-                    setIsAuthorized(true);
-                    loadJobs();
-                }} />
+            <div style={{ ...styles.container, background: '#020308', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ color: '#ff0055', fontFamily: 'monospace', fontSize: '24px', marginBottom: '20px' }}>ACCESS_DENIED</div>
+                <div style={{ color: '#00f2ff', fontFamily: 'monospace', marginBottom: '30px' }}>SECURE_CONNECTION_REQUIRED: API_KEY_MISSING</div>
+                <button
+                    onClick={() => chrome.runtime.openOptionsPage()}
+                    style={{
+                        background: 'transparent',
+                        border: '1px solid #00f2ff',
+                        color: '#00f2ff',
+                        padding: '15px 30px',
+                        fontFamily: 'monospace',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    INITIALIZE_CONFIGURATION_PROTOCOL
+                </button>
             </div>
         );
     }
