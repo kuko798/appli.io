@@ -10,10 +10,14 @@
   "permissions": [
     "identity",
     "storage",
-    "notifications"
+    "notifications",
+    "audio",
+    "video"
   ],
   "host_permissions": [
-    "https://api.groq.com/*"
+    "http://localhost:11434/*",
+    "http://127.0.0.1:11434/*",
+    "https://gmail.googleapis.com/*"
   ],
   "oauth2": {
     "client_id": "1097794489757-u3p40a52bjb2h8hi7t2gspephtluf9ui.apps.googleusercontent.com",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
+import LocalLLM from '../../background/localLLM.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('assets/pdf.worker.min.js');
 
@@ -12,10 +13,11 @@ const ResumeDiagnostic = ({ onCancel }) => {
     const [scanSteps, setScanSteps] = useState([]);
     const [fileName, setFileName] = useState('');
     const [isDragging, setIsDragging] = useState(false);
+    const [elapsedMs, setElapsedMs] = useState(0);
+    const [progress, setProgress] = useState(0);
     const fileInputRef = useRef(null);
     const scrollRef = useRef(null);
-
-    const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+    const timerRef = useRef(null);
 
     const steps = [
         "BOOTING_ARMOR_DIAGNOSTIC...",
@@ -89,89 +91,113 @@ const ResumeDiagnostic = ({ onCancel }) => {
         if (!resumeText.trim()) return;
         setReportData(null);
         setScanSteps(["INITIATING_ARMOR_SCAN...", `TARGET: ${fileName || "MANUAL_INPUT"}`]);
+        setElapsedMs(0);
+        setProgress(5);
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => setElapsedMs((ms) => ms + 1000), 1000);
         setView('SCANNING');
 
         let i = 0;
         const interval = setInterval(() => {
             if (i < steps.length) {
                 setScanSteps(prev => [...prev, steps[i++]]);
+                setProgress(Math.min(75, Math.round(((i + 1) / steps.length) * 70)));
             } else {
                 clearInterval(interval);
+                setProgress(80);
                 fetchCritique();
             }
         }, 210);
     };
 
-    const getValidKey = async () => {
-        return new Promise((resolve, reject) => {
-            chrome.storage.sync.get(['groqApiKey'], (items) => {
-                if (items.groqApiKey) {
-                    resolve(items.groqApiKey);
-                } else {
-                    reject(new Error("INVALID_API_KEY"));
-                }
-            });
-        });
+    const normalizeKeys = (obj) => {
+        if (Array.isArray(obj)) return obj.map(normalizeKeys);
+        if (obj && typeof obj === 'object') {
+            return Object.fromEntries(
+                Object.entries(obj).map(([k, v]) => [k.toLowerCase(), normalizeKeys(v)])
+            );
+        }
+        return obj;
+    };
+
+    const extractBullets = (text) => {
+        const bullets = [];
+        if (!text) return bullets;
+
+        // Normalize common inline separators to newlines
+        const normalized = text
+            .replace(/\s*[•·●◦]\s*/g, "\n")
+            .replace(/\s+-\s+/g, "\n");
+
+        // Pass 1: lines (keep short lines too)
+        const lines = normalized.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        for (const line of lines) {
+            if (/^[-*•·●◦]/.test(line)) {
+                bullets.push(line.replace(/^[-*•·●◦]\s*/, '').trim());
+                continue;
+            }
+            if (line.length >= 8) bullets.push(line);
+        }
+
+        // Pass 2: sentence split if still few bullets
+        if (bullets.length < 3) {
+            const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z])/);
+            sentences.map(s => s.trim()).filter(s => s.length >= 8).forEach(s => bullets.push(s));
+        }
+
+        // Fallback: grab top 3 longest chunks so we never return empty
+        if (bullets.length === 0) {
+            const chunks = text.split(/\s{2,}/).filter(Boolean);
+            chunks.sort((a, b) => b.length - a.length);
+            bullets.push(...chunks.slice(0, 3));
+        }
+
+        return Array.from(new Set(bullets)).slice(0, 50);
     };
 
     const fetchCritique = async () => {
         try {
             setScanSteps(prev => [
                 ...prev,
-                "LINK_TYPE: GROQ_ULTRA_DAEMON",
-                "ROUTING_TO_CORE_GATEWAY..."
+                "LINK_TYPE: LOCAL_LLM_CORE",
+                "ROUTING_TO_OLLAMA_GATEWAY..."
             ]);
+            setProgress(85);
 
-            const apiKey = await getValidKey();
+            const bullets = extractBullets(resumeText);
+            const MAX_BULLETS = 12;
+            const limitedBullets = bullets.slice(0, MAX_BULLETS);
 
-            const prompt = `
-You are an expert technical resume reviewer.
+            setScanSteps(prev => [...prev, `[DEBUG] Bullets detected: ${bullets.length}${bullets.length > MAX_BULLETS ? ` (truncated to ${MAX_BULLETS})` : ""}`]);
+            console.log("[ResumeDiagnostic] text_len:", resumeText.length);
+            console.log("[ResumeDiagnostic] bullet_count:", bullets.length, "first_bullets:", bullets.slice(0, 5));
+            if (limitedBullets.length === 0) {
+                const fallback = resumeText.trim();
+                if (fallback.length === 0) {
+                    setScanSteps(prev => [...prev, "[WARN] Resume text empty after parse; aborting."]);
+                    return;
+                }
+                setScanSteps(prev => [...prev, "[WARN] No bullets parsed; falling back to full text as single item."]);
+                limitedBullets.push(fallback.slice(0, 1200));
+            }
+            const bulletList = limitedBullets.map((b, i) => `${i + 1}. ${b}`).join("\n");
 
-Return ONLY valid JSON. No markdown. No explanations.
+            const prompt = `You are an expert technical resume reviewer. Return ONLY valid JSON. No markdown, no extra text.
 
-=====================
-SCORING RUBRIC (MANDATORY)
+You must rate EVERY bullet provided below. For each bullet index N in the list, include an entry in experiences[0].analysis[N] with matching original_bullet text.
 
-Rate each item from 1–10:
+Scoring rules:
+- rating is integer 1-10
+- If no metrics present => rating <= 6
+- Weak verbs (helped, assisted, worked on) => rating <= 5
+- Real metrics => rating >= 7
+- Never invent numbers; use placeholders X%, N+, <metric> when suggesting
+- Keep critiques under 30 words; suggestions under 18 words
 
-1–2: Task-only, vague, no impact, weak verbs
-3–4: Clear task, no metrics, low specificity
-5–6: Solid responsibility, missing quantified impact
-7–8: Strong action + clear result OR tech stack present
-9–10: Excellent: action + quantified impact + tech/context
+Bullet list (keep order):
+${bulletList}
 
-Rules:
-- Analyze EVERY bullet point found in the resume. Do not skip any.
-- Do NOT combine or summarize multiple bullet points. Analyze each separately.
-- If NO numbers are present → rating MUST be 6 or lower
-- If bullet starts with weak verbs (helped, assisted, worked on) → max rating 5
-- If bullet contains real metrics → minimum rating 7
-- Use the FULL 1–10 range
-
-=====================
-ANTI-HALLUCINATION RULE (CRITICAL)
-
-When suggesting improvements:
-- NEVER invent numbers
-- If no metrics exist, use ONLY placeholders:
-  - X%
-  - X+
-  - N+
-  - <metric>
-
-✘ "increased revenue by 27%"
-✔ "increased revenue by X%"
-
-If rule is violated → response is invalid.
-
-=====================
-FORMULA (STRICT)
-
-[Strong Action Verb] + [Impact w/ placeholder] + [Tech / Context]
-
-=====================
-OUTPUT STRUCTURE
-
+Return JSON exactly like:
 {
   "summary": {
     "structural_integrity": { "rating": 0, "advice": "" },
@@ -180,77 +206,91 @@ OUTPUT STRUCTURE
   },
   "experiences": [
     {
-      "role_at_company": "",
+      "role_at_company": "Resume",
       "analysis": [
-        {
-          "original_bullet": "",
-          "rating": 0,
-          "critique": "",
-          "suggestions": [
-            "Improved system performance by X% using [tech/context]",
-            "Reduced manual effort by X% through [tool/process]"
-          ]
-        }
+        { "original_bullet": "1. <text>", "rating": 0, "critique": "", "suggestions": ["", ""] }
       ]
     }
   ],
   "upgrade_path": ["", "", ""]
-}
-
-=====================
-RESUME:
-${resumeText}
-`;
+}`;
 
             setScanSteps(prev => [...prev, "INITIATING_CORE_INFERENCE..."]);
 
-            const response = await fetch(GROQ_API_URL, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "llama-3.3-70b-versatile",
-                    messages: [{ role: "user", content: prompt }],
-                    temperature: 0.25,
-                    response_format: { type: "json_object" }
-                })
+            // Debug logging for LLM interaction
+            console.log("[ResumeDiagnostic] bullet_count:", bullets.length, "first_bullets:", bullets.slice(0, 5));
+            console.log("[ResumeDiagnostic] prompt_preview:", prompt.slice(0, 500));
+
+            const jsonResponse = await LocalLLM.generateJSON({
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.2,
+                maxTokens: 1200
+            });
+            setProgress(100);
+            if (timerRef.current) clearInterval(timerRef.current);
+
+            console.log("[ResumeDiagnostic] raw_llm_response:", jsonResponse);
+            console.log("[ResumeDiagnostic] parsed_llm_response:", JSON.stringify(jsonResponse).slice(0, 500));
+
+            const raw = normalizeKeys(jsonResponse);
+
+            const toScoreObj = (val) => {
+                if (val && typeof val === 'object') return { rating: Number(val.rating) || 0, advice: val.advice || '' };
+                if (typeof val === 'number') return { rating: val, advice: '' };
+                return { rating: 0, advice: '' };
+            };
+            const summary = raw.summary || {};
+
+            const analysis = ((raw.experiences && raw.experiences[0]?.analysis) || []).map((a) => ({
+                original_bullet: a.original_bullet || "",
+                rating: Number(a.rating) || 0,
+                critique: a.critique || "",
+                suggestions: Array.isArray(a.suggestions) ? a.suggestions.filter(Boolean) : []
+            }));
+
+            const filledAnalysis = limitedBullets.map((b, idx) => {
+                const existing = analysis[idx];
+                if (existing) {
+                    return {
+                        original_bullet: existing.original_bullet || `${idx + 1}. ${b}`,
+                        rating: Number(existing.rating) || 0,
+                        critique: existing.critique || "",
+                        suggestions: existing.suggestions.length ? existing.suggestions : ["Add metric (X%) with outcome", "State tools/stack used"]
+                    };
+                }
+                return {
+                    original_bullet: `${idx + 1}. ${b}`,
+                    rating: 0,
+                    critique: "Model omitted this bullet. Manually assess.",
+                    suggestions: ["Add action + metric placeholder", "State tools/stack used"]
+                };
             });
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error("INVALID_API_KEY");
-                }
-                const errData = await response.json();
-                throw new Error(`CLOUD_FAILURE: ${errData.error?.message || response.statusText}`);
-            }
-
-            const data = await response.json();
-            const rawResponse = data.choices[0].message.content;
-            const cleanJson = rawResponse.replace(/```json/g, "").replace(/```/g, "").trim();
-            const jsonResponse = JSON.parse(cleanJson);
-
-            setReportData(jsonResponse);
+            const normalized = {
+                summary: {
+                    structural_integrity: toScoreObj(summary.structural_integrity),
+                    signal_strength: toScoreObj(summary.signal_strength),
+                    tech_arity: toScoreObj(summary.tech_arity)
+                },
+                experiences: [{
+                    role_at_company: (raw.experiences && raw.experiences[0]?.role_at_company) || "Resume",
+                    analysis: filledAnalysis
+                }],
+                upgrade_path: (raw.upgrade_path || []).filter(Boolean)
+            };
+            setReportData(normalized);
             setScanSteps(prev => [...prev, "SCAN_COMPLETE. DATA_STABILIZED."]);
             setTimeout(() => setView('REPORT'), 1000);
 
         } catch (error) {
-            if (error.message === "INVALID_API_KEY") {
-                setScanSteps(prev => [
-                    ...prev,
-                    "[CRITICAL_FAILURE] ACCESS_DENIED (401)",
-                    "CAUSE: API KEY EXPIRED OR INVALID",
-                    "ACTION_REQUIRED: REGENERATE_ACCESS_TOKEN"
-                ]);
-                // We'll handle the UI button in the view render
-            } else {
-                setScanSteps(prev => [
-                    ...prev,
-                    `[CRITICAL_FAILURE] ${error?.message?.toUpperCase()}`,
-                    "ADVICE: Check Groq API Key in Extension Options."
-                ]);
-            }
+            setProgress(100);
+            if (timerRef.current) clearInterval(timerRef.current);
+            setScanSteps(prev => [
+                ...prev,
+                `[CRITICAL_FAILURE] ${error?.message?.toUpperCase()}`,
+                error?.rawText ? `RAW_JSON: ${error.rawText.substring(0, 200)}` : null,
+                "ADVICE: Ensure Ollama is running (ollama serve)"
+            ].filter(Boolean));
         }
     };
 
@@ -283,6 +323,14 @@ ${resumeText}
 
                     {view === 'SCANNING' && (
                         <div style={styles.scanSection}>
+                            <div style={styles.progressBarWrap}>
+                                <div style={{ ...styles.progressFill, width: `${Math.min(progress, 100)}%` }} />
+                                <div style={styles.progressLabel}>
+                                    <span>Processing…</span>
+                                    <span>{Math.round(progress)}%</span>
+                                    <span>{Math.floor(elapsedMs / 1000)}s elapsed</span>
+                                </div>
+                            </div>
                             <div style={styles.logContainer}>
                                 <div style={styles.logHeader}>[DIAGNOSTIC_TERMINAL]</div>
                                 <div style={styles.logBody} ref={scrollRef}>
@@ -292,11 +340,7 @@ ${resumeText}
                                     {(!reportData && !scanSteps.some(s => s && s.includes('ERROR'))) && <div style={styles.cursor}>_</div>}
                                 </div>
                             </div>
-                            {scanSteps.some(s => s && s.includes('INVALID_KEY') || s.includes('ACCESS_DENIED')) ? (
-                                <button onClick={() => chrome.runtime.openOptionsPage()} style={styles.retryBtn}>
-                                    ⚠ REGENERATE_ACCESS_TOKEN
-                                </button>
-                            ) : scanSteps.some(s => s && s.includes('ERROR')) && (
+                            {scanSteps.some(s => s && s.includes('ERROR')) && (
                                 <button onClick={() => setView('INPUT')} style={styles.retryBtn}>RESET_TERMINAL_AND_RETRY</button>
                             )}
                         </div>
@@ -409,6 +453,9 @@ const styles = {
     prompt: { color: '#ff0055', mr: '10px' },
     cursor: { display: 'inline-block', width: '8px', height: '15px', background: '#00f2ff', animation: 'twinkle 1s infinite' },
     retryBtn: { mt: '20px', background: 'transparent', border: '1px solid #ff0055', color: '#ff0055', padding: '12px', cursor: 'pointer' },
+    progressBarWrap: { position: 'relative', width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(0,242,255,0.2)', borderRadius: '6px', marginBottom: '12px', overflow: 'hidden' },
+    progressFill: { height: '10px', background: 'linear-gradient(90deg,#00f2ff,#00ffaa)', transition: 'width 0.2s ease' },
+    progressLabel: { display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#9ae6ff', padding: '6px 10px', fontFamily: '"Roboto Mono", monospace' },
     reportSection: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
     reportHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: '25px', borderBottom: '1px solid rgba(255,255,255,0.1)', pb: '15px' },
     reportTitle: { fontSize: '24px', fontWeight: 'bold', color: '#00f2ff', fontFamily: '"Roboto Mono", monospace' },

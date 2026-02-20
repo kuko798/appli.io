@@ -17,7 +17,6 @@ function Dashboard() {
     const [simulatingJob, setSimulatingJob] = useState(null);
     const [simulationMode, setSimulationMode] = useState('interview');
     const [scanningJob, setScanningJob] = useState(null);
-    const [isAuthorized, setIsAuthorized] = useState(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncStatus, setSyncStatus] = useState("");
     const [syncRange, setSyncRange] = useState("1m");
@@ -33,16 +32,7 @@ function Dashboard() {
     const currentGlow = statusColors[hoveredStatus] || statusColors[null];
 
     useEffect(() => {
-        chrome.storage.sync.get(['groqApiKey'], (result) => {
-            if (result.groqApiKey) {
-                setIsAuthorized(true);
-                loadJobs();
-            } else {
-                setIsAuthorized(false);
-            }
-        });
-
-        // Continue loading listeners only if authorized, but for simplicity we rely on the conditional return
+        loadJobs();
     }, []);
 
     const loadJobs = () => {
@@ -100,15 +90,14 @@ function Dashboard() {
 
     useEffect(() => {
         const listener = (changes, namespace) => {
-            if (namespace === 'local' && changes.jobs && isAuthorized) {
-                console.log("Jobs updated, reloading dashboard...");
+            if (namespace === 'local' && changes.jobs) {
                 loadJobs();
             }
         };
 
         chrome.storage.onChanged.addListener(listener);
         return () => chrome.storage.onChanged.removeListener(listener);
-    }, [isAuthorized]);
+    }, []);
 
     // Starfield generator with twinkling and drift support
     const stars = useMemo(() => {
@@ -125,36 +114,6 @@ function Dashboard() {
             large: generateStars(50)
         };
     }, []);
-
-    if (isAuthorized === null) {
-        return <div style={{ ...styles.container, background: '#020308', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ color: '#00f2ff', fontFamily: 'monospace' }}>INITIALIZING_SYSTEM...</div>
-        </div>;
-    }
-
-    if (!isAuthorized) {
-        return (
-            <div style={{ ...styles.container, background: '#020308', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ color: '#ff0055', fontFamily: 'monospace', fontSize: '24px', marginBottom: '20px' }}>ACCESS_DENIED</div>
-                <div style={{ color: '#00f2ff', fontFamily: 'monospace', marginBottom: '30px' }}>SECURE_CONNECTION_REQUIRED: API_KEY_MISSING</div>
-                <button
-                    onClick={() => chrome.runtime.openOptionsPage()}
-                    style={{
-                        background: 'transparent',
-                        border: '1px solid #00f2ff',
-                        color: '#00f2ff',
-                        padding: '15px 30px',
-                        fontFamily: 'monospace',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    INITIALIZE_CONFIGURATION_PROTOCOL
-                </button>
-            </div>
-        );
-    }
 
     return (
         <div style={{ ...styles.container, background: '#020308', transition: 'background 0.8s ease' }}>
@@ -220,13 +179,6 @@ function Dashboard() {
                     </div>
                 </div>
                 <div style={styles.headerButtons}>
-                    <button
-                        onClick={() => chrome.runtime.openOptionsPage()}
-                        style={{ ...styles.diagnosticBtn, color: '#f59e0b', borderColor: '#f59e0b40', background: 'rgba(245, 158, 11, 0.05)' }}
-                        className="glitch-hover"
-                    >
-                        CONFIG_API_KEY
-                    </button>
                     <button
                         onClick={() => setShowResumeDiagnostic(true)}
                         style={{ ...styles.diagnosticBtn, color: '#00f2ff', borderColor: '#00f2ff40', background: 'rgba(0, 242, 255, 0.05)' }}

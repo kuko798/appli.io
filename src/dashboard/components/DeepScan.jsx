@@ -1,13 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import LocalLLM from '../../background/localLLM.js';
 
 const DeepScan = ({ job, onCancel }) => {
     const [scanSteps, setScanSteps] = useState([]);
     const [isScanning, setIsScanning] = useState(false);
     const [report, setReport] = useState(null);
     const scrollRef = useRef(null);
-
-    const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
     const steps = [
         "INITIALIZING_VORTEX_PROTOCOL...",
@@ -41,15 +40,7 @@ const DeepScan = ({ job, onCancel }) => {
 
     const fetchDeepScan = async () => {
         try {
-            const apiKey = await new Promise((resolve, reject) => {
-                chrome.storage.sync.get(['groqApiKey'], (result) => {
-                    if (result.groqApiKey) resolve(result.groqApiKey);
-                    else reject(new Error("MISSING_API_KEY"));
-                });
-            });
-
-            const prompt = `
-You are a high-level corporate intelligence AI. 
+            const prompt = `You are a high-level corporate intelligence AI.
 Provide a "Deep Scan" intelligence report for the company "${job.company}".
 The user is applying for the role of "${job.title || 'a position'}".
 
@@ -60,24 +51,14 @@ Format the response in a futuristic terminal style with the following sections:
 4. [TACTICAL_ADVICE] - 3 specific tips for interviewing at this specific company.
 5. [SENTIMENT_ANALYSIS] - A brief "Risk vs Reward" assessment.
 
-Use a techy, cyberpunk/terminal tone. Use brackets for headers.
-`;
+Use a techy, cyberpunk/terminal tone. Use brackets for headers.`;
 
-            const response = await fetch(GROQ_API_URL, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "llama-3.3-70b-versatile",
-                    messages: [{ role: "user", content: prompt }],
-                    temperature: 0.5
-                }),
+            const report = await LocalLLM.generate({
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.5
             });
 
-            const data = await response.json();
-            setReport(data.choices[0].message.content);
+            setReport(report);
             setIsScanning(false);
         } catch (error) {
             setScanSteps(prev => [...prev, "[ERROR] INTELLIGENCE_GATHERING_FAILED. RETRY_LATER."]);

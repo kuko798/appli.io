@@ -1,4 +1,4 @@
-import Gemini from './gemini.js';
+import LocalLLM from './localLLM.js';
 
 const Classifier = {
     // Pre-calculated probabilities (Naive Bayes Model)
@@ -133,23 +133,23 @@ const Classifier = {
     },
 
     /**
-     * Advanced prediction and extraction using Gemini.
+     * Advanced prediction using the local LLM (Ollama).
+     * Falls back to the built-in Naive Bayes + regex classifier if Ollama is unreachable.
      */
-    predictWithGemini: async function (apiKey, subject, body) {
+    predictWithLocalLLM: async function (subject, body) {
         try {
-            const result = await Gemini.analyzeEmail(apiKey, subject, body);
+            const result = await LocalLLM.analyzeEmail(subject, body);
             return {
                 status: result.status || "Applied",
-                role: result.role,
-                company: result.company
+                role: result.role || null,
+                company: result.company || null
             };
         } catch (error) {
-            console.warn("Gemini prediction failed, falling back to regex:", error);
-            // Fallback to existing logic
+            console.warn("LocalLLM prediction failed, falling back to built-in classifier:", error);
             return {
                 status: this.predict(subject + " " + body),
                 role: this.extractRole(subject, body),
-                company: null // Current regex doesn't reliably extract company
+                company: null
             };
         }
     },

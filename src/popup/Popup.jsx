@@ -1,24 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const Popup = () => {
     const [range, setRange] = useState("1m");
     const [status, setStatus] = useState("");
     const [isSyncing, setIsSyncing] = useState(false);
-    const [isAuthorized, setIsAuthorized] = useState(null); // null = checking, false = no key, true = key exists
-
-    useEffect(() => {
-        checkAuthorization();
-    }, []);
-
-    const checkAuthorization = () => {
-        chrome.storage.sync.get(['groqApiKey'], (result) => {
-            if (result.groqApiKey) {
-                setIsAuthorized(true);
-            } else {
-                setIsAuthorized(false);
-            }
-        });
-    };
 
     const handleSync = () => {
         setIsSyncing(true);
@@ -33,27 +18,6 @@ const Popup = () => {
     const openDashboard = () => {
         chrome.tabs.create({ url: "src/dashboard/index.html" });
     };
-
-    if (isAuthorized === null) {
-        return <div style={styles.container}><div style={styles.header}>INITIALIZING_SYSTEM...</div></div>;
-    }
-
-    if (!isAuthorized) {
-        return (
-            <div style={styles.container}>
-                <div style={styles.header}>SETUP_REQUIRED</div>
-                <div style={{ ...styles.status, color: '#f59e0b', marginBottom: '15px' }}>
-                    API KEY MISSING
-                </div>
-                <button
-                    onClick={() => chrome.runtime.openOptionsPage()}
-                    style={styles.buttonPrimary}
-                >
-                    CONFIGURE_API_KEY
-                </button>
-            </div>
-        );
-    }
 
     return (
         <div style={styles.container}>

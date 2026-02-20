@@ -1,4 +1,3 @@
-import Groq from './groq.js';
 import { gmailService } from '../services/gmailService.js';
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

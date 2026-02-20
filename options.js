@@ -1,76 +1,105 @@
-// Saves options to chrome.storage
-const saveOptions = () => {
-    const groqApiKey = document.getElementById('groqApiKey').value;
+const TAGS_PATH = "/api/tags";
 
-    chrome.storage.sync.set(
-        {
-            groqApiKey: groqApiKey
-        },
-        () => {
-            // Update status to let user know options were saved.
-            const status = document.getElementById('status');
-            status.textContent = 'Options saved.';
-            setTimeout(() => {
-                status.textContent = '';
-            }, 3000);
-        }
-    );
-};
+const getEl = (id) => document.getElementById(id);
 
-// Restores state from chrome.storage.
+// ── Restore saved settings ────────────────────────────────────────────────────
 const restoreOptions = () => {
     chrome.storage.sync.get(
-        {
-            groqApiKey: ''
-        },
+        { ollamaUrl: "http://localhost:11434", ollamaModel: "llama3.2:1b" },
         (items) => {
-            document.getElementById('groqApiKey').value = items.groqApiKey;
+            getEl("ollamaUrl").value = items.ollamaUrl;
+            getEl("ollamaModel").value = items.ollamaModel;
         }
     );
 };
 
-// Verifies the API key with a real request
-const verifyKey = async () => {
-    const apiKey = document.getElementById('groqApiKey').value;
-    const statusEl = document.getElementById('keyStatus');
+// ── Save settings ─────────────────────────────────────────────────────────────
+const saveOptions = () => {
+    const ollamaUrl = getEl("ollamaUrl").value.trim().replace(/\/$/, "");
+    const ollamaModel = getEl("ollamaModel").value.trim();
 
-    if (!apiKey) {
-        statusEl.textContent = '⚠ Please enter a key to verify.';
-        statusEl.style.color = '#f59e0b';
-        return;
-    }
+    chrome.storage.sync.set({ ollamaUrl, ollamaModel }, () => {
+        const statusEl = getEl("status");
+        statusEl.textContent = "Settings saved.";
+        setTimeout(() => { statusEl.textContent = ""; }, 3000);
+    });
+};
 
-    statusEl.innerHTML = '⟳ Verifying connection...';
-    statusEl.style.color = '#6b7280';
+// ── Test connection ───────────────────────────────────────────────────────────
+const testConnection = async () => {
+    const url = getEl("ollamaUrl").value.trim().replace(/\/$/, "");
+    const model = getEl("ollamaModel").value.trim();
+    const statusEl = getEl("connectionStatus");
+
+    statusEl.textContent = "⟳ Connecting to Ollama...";
+    statusEl.style.color = "#6b7280";
 
     try {
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
-                messages: [{ role: "user", content: "ping" }],
-                max_tokens: 1
-            }),
+        const response = await fetch(`${url}${TAGS_PATH}`, {
+            signal: AbortSignal.timeout(6000)
         });
 
-        if (response.ok) {
-            statusEl.textContent = '✅ Connection Secure. Key is valid.';
-            statusEl.style.color = '#10b981';
+        if (!response.ok) {
+            statusEl.textContent = `❌ Ollama returned ${response.status}`;
+            statusEl.style.color = "#ef4444";
+            return;
+        }
+
+        const data = await response.json();
+        const models = (data.models || []).map((m) => m.name);
+        const modelPulled = models.some(
+            (m) => m === model || m.startsWith(model + ":")
+        );
+
+        if (modelPulled) {
+            statusEl.textContent = `✅ Connected. Model "${model}" is ready.`;
+            statusEl.style.color = "#10b981";
+        } else if (models.length > 0) {
+            statusEl.textContent = `⚠ Ollama running but "${model}" not found. Pull it first.`;
+            statusEl.style.color = "#f59e0b";
         } else {
-            const data = await response.json();
-            statusEl.textContent = `❌ Connection Rejected: ${data.error?.message || 'Invalid Key'}`;
-            statusEl.style.color = '#ef4444';
+            statusEl.textContent = "⚠ Ollama running but no models pulled yet.";
+            statusEl.style.color = "#f59e0b";
         }
     } catch (e) {
-        statusEl.textContent = '❌ Network Error. Check internet connection.';
-        statusEl.style.color = '#ef4444';
+        statusEl.textContent = "❌ Cannot reach Ollama — is it running? (ollama serve)";
+        statusEl.style.color = "#ef4444";
     }
 };
 
-document.addEventListener('DOMContentLoaded', restoreOptions);
-document.getElementById('save').addEventListener('click', saveOptions);
-document.getElementById('verify').addEventListener('click', verifyKey);
+// ── List available models ─────────────────────────────────────────────────────
+const listModels = async () => {
+    const url = getEl("ollamaUrl").value.trim().replace(/\/$/, "");
+    const listEl = getEl("modelList");
+
+    listEl.textContent = "Loading...";
+
+    try {
+        const response = await fetch(`${url}${TAGS_PATH}`, {
+            signal: AbortSignal.timeout(6000)
+        });
+
+        if (!response.ok) {
+            listEl.textContent = `Error: ${response.status}`;
+            return;
+        }
+
+        const data = await response.json();
+        const models = (data.models || []).map((m) => m.name);
+
+        if (models.length === 0) {
+            listEl.textContent = "No models found. Run: ollama pull llama3.2";
+        } else {
+            listEl.innerHTML = "<strong>Available models:</strong><br>" +
+                models.map((m) => `&nbsp;&nbsp;• ${m}`).join("<br>");
+        }
+    } catch {
+        listEl.textContent = "Cannot reach Ollama.";
+    }
+};
+
+// ── Wire up ───────────────────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", restoreOptions);
+getEl("save").addEventListener("click", saveOptions);
+getEl("test").addEventListener("click", testConnection);
+getEl("listModels").addEventListener("click", listModels);

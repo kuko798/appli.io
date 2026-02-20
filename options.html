@@ -17,13 +17,13 @@
       font-weight: bold;
     }
 
-    input[type="text"],
-    input[type="password"] {
+    input[type="text"] {
       width: 100%;
       padding: 8px;
       margin-bottom: 16px;
       border: 1px solid #ccc;
       border-radius: 4px;
+      box-sizing: border-box;
     }
 
     button {
@@ -35,47 +35,51 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background-color: #357abd;
-    }
+    button:hover { background-color: #357abd; }
 
-    #status {
-      margin-top: 10px;
-      color: green;
-      font-weight: bold;
-    }
+    #status { margin-top: 10px; color: green; font-weight: bold; }
 
-    .help-text {
-      font-size: 0.9em;
-      color: #666;
-      margin-bottom: 10px;
-    }
+    .help-text { font-size: 0.9em; color: #666; margin-bottom: 10px; }
 
-    code {
-      background-color: #f0f0f0;
-      padding: 2px 4px;
-      border-radius: 3px;
-    }
+    code { background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; }
+
+    .section { border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; margin-bottom: 20px; }
+
+    .section h3 { margin: 0 0 12px 0; font-size: 1em; color: #333; }
+
+    #modelList { margin-top: 8px; font-size: 0.85em; color: #555; min-height: 1.2em; }
   </style>
 </head>
 
 <body>
   <h2>Appli.io Settings</h2>
+  <p style="color:#555; font-size:0.9em;">No API keys needed — Appli.io runs entirely on your local machine using Ollama.</p>
 
+  <div class="section">
+    <h3>Local LLM (Ollama)</h3>
 
+    <label for="ollamaUrl">Ollama Server URL</label>
+    <div class="help-text">
+      Default: <code>http://localhost:11434</code> — change only if Ollama runs on a different host/port.
+    </div>
+    <input type="text" id="ollamaUrl" placeholder="http://localhost:11434">
 
-  <label for="groqApiKey">Groq API Key (LLaMA 3 Pro)</label>
-  <div class="help-text">
-    Get your free key from <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>.<br>
-    LLaMA 3 provides professional-grade extraction for free.
+    <label for="ollamaModel">Model Name</label>
+    <div class="help-text">
+      Any model you've pulled with <code>ollama pull &lt;model&gt;</code>.<br>
+      Recommended: <code>llama3.2</code> &nbsp;|&nbsp; Fast: <code>phi3.5</code> &nbsp;|&nbsp; Powerful: <code>mistral</code>
+    </div>
+    <input type="text" id="ollamaModel" placeholder="llama3.2">
+
+    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px;">
+      <button id="test" style="background-color: #6b7280; padding: 9px 15px;">Test Connection</button>
+      <button id="listModels" style="background-color: #6b7280; padding: 9px 15px;">List Models</button>
+    </div>
+    <div id="connectionStatus" style="font-size: 0.85em; margin-bottom: 8px; min-height: 1.2em;"></div>
+    <div id="modelList"></div>
   </div>
-  <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px;">
-    <input type="password" id="groqApiKey" placeholder="Enter your Groq API key" style="margin-bottom: 0; flex: 1;">
-    <button id="verify" style="background-color: #6b7280; padding: 9px 15px;">Verify</button>
-  </div>
-  <div id="keyStatus" style="font-size: 0.85em; margin-bottom: 16px; height: 1.2em;"></div>
 
-  <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+  <div style="border-top: 1px solid #eee; padding-top: 20px;">
     <button id="save" style="width: 100%;">Save Settings</button>
   </div>
   <div id="status" style="text-align: center; margin-top: 10px;"></div>
