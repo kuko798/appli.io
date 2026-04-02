@@ -1,364 +1,248 @@
-
 import React, { useState, useMemo } from 'react';
 
 const ITEMS_PER_PAGE = 20;
+const BRAND = '#8e5be8';
 
-const JobTable = ({ jobs = [], activeFilter = null, onUpdateJob = () => { }, onDeleteJob = () => { }, onSimulateJob = () => { }, onDeepScan = () => { } }) => {
-    const [currentPage, setCurrentPage] = useState(1);
+const STATUS_STYLES = {
+  Applied:    { color: '#8e5be8', bg: '#8e5be80f', border: '#8e5be830' },
+  Assessment: { color: '#06b6d4', bg: '#06b6d40f', border: '#06b6d430' },
+  Interview:  { color: '#f59e0b', bg: '#f59e0b0f', border: '#f59e0b30' },
+  Offer:      { color: '#10b981', bg: '#10b9810f', border: '#10b98130' },
+  Rejected:   { color: '#f87171', bg: '#f871710f', border: '#f8717130' },
+};
 
-    const filteredAndSortedJobs = useMemo(() => {
-        let filtered = activeFilter
-            ? jobs.filter(job => job.status === activeFilter)
-            : jobs;
-        return [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
-    }, [jobs, activeFilter]);
+const isCold = date => (Date.now() - new Date(date)) / 86400000 > 10;
 
-    const totalPages = Math.ceil(filteredAndSortedJobs.length / ITEMS_PER_PAGE);
-    const currentJobs = filteredAndSortedJobs.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
-    );
+const COMPANY_COLORS = ['#8e5be8', '#d56cc7', '#f59e0b', '#10b981', '#ef4444', '#b77af2', '#14b8a6'];
+const companyColor = name => COMPANY_COLORS[(name || '').charCodeAt(0) % COMPANY_COLORS.length];
 
-    const handlePrev = () => setCurrentPage(p => Math.max(1, p - 1));
-    const handleNext = () => setCurrentPage(p => Math.min(totalPages, p + 1));
+function StatusBadge({ status, onChange }) {
+  const s = STATUS_STYLES[status] || STATUS_STYLES.Applied;
+  return (
+    <select
+      value={status}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        background: s.bg, border: `1px solid ${s.border}`,
+        color: s.color, padding: '4px 10px', borderRadius: 100,
+        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        outline: 'none', fontFamily: 'inherit', appearance: 'none'
+      }}
+    >
+      <option value="Applied">Applied</option>
+      <option value="Assessment">Assessment</option>
+      <option value="Interview">Interview</option>
+      <option value="Offer">Offer</option>
+      <option value="Rejected">Rejected</option>
+    </select>
+  );
+}
 
-    const handleStatusChange = (jobId, newStatus) => {
-        onUpdateJob(jobId, { status: newStatus });
-    };
+function ActionBtn({ children, color = BRAND, onClick, title }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick} title={title}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? `${color}18` : 'transparent',
+        border: `1px solid ${hov ? color + '50' : '#d7e0ec'}`,
+        color: hov ? color : '#55708f',
+        padding: '4px 10px', borderRadius: 6,
+        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+        fontFamily: 'inherit', transition: 'all 0.13s'
+      }}
+    >{children}</button>
+  );
+}
 
-    const isJobCold = (date) => {
-        const lastDate = new Date(date);
-        const now = new Date();
-        const diff = (now - lastDate) / (1000 * 60 * 60 * 24);
-        return diff > 10;
-    };
+export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, onDeleteJob, onSimulateJob, onDeepScan }) {
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDir, setSortDir] = useState(-1); // -1 = desc
 
-    if (jobs.length === 0) {
-        return (
-            <div style={styles.empty}>
-                <div style={styles.emptyGlitch}>NO_DATA_DETECTED</div>
-                <div style={styles.emptySub}>SYNC_REQUIRED_FOR_INITIALIZATION</div>
-            </div>
-        );
-    }
+  const filtered = useMemo(() => {
+    const list = activeFilter ? jobs.filter(j => j.status === activeFilter) : jobs;
+    return [...list].sort((a, b) => {
+      if (sortKey === 'date') return sortDir * (new Date(b.date) - new Date(a.date));
+      if (sortKey === 'company') return sortDir * (a.company || '').localeCompare(b.company || '');
+      return 0;
+    });
+  }, [jobs, activeFilter, sortKey, sortDir]);
 
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const current = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const toggleSort = key => {
+    if (sortKey === key) setSortDir(d => d * -1);
+    else { setSortKey(key); setSortDir(-1); }
+  };
+
+  if (jobs.length === 0) {
     return (
-        <div style={styles.container}>
-            <div style={styles.tableHeader}>
-                <div style={styles.headerLabel}>ACTIVE_DATA_FEED</div>
-                <div style={styles.headerDecoration}></div>
-            </div>
-            <table style={styles.table}>
-                <thead>
-                    <tr>
-                        <th style={styles.th}>COMPANY_NAME</th>
-                        <th style={styles.th}>ASSIGNED_ROLE</th>
-                        <th style={styles.th}>DATA_SUBJECT</th>
-                        <th style={styles.th}>NODE_STATUS</th>
-                        <th style={styles.th}>TIMESTAMP</th>
-                        <th style={styles.th}>CMD</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentJobs.map((job) => {
-                        const cold = isJobCold(job.date);
-                        const canTrain = job.status === 'Interview';
-                        const showSimBtn = cold || canTrain;
-
-                        return (
-                            <tr
-                                key={job.id}
-                                style={{ ...styles.tr, borderLeft: cold ? '4px solid #ff0055' : '1px solid transparent' }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(0, 242, 255, 0.08)';
-                                    e.currentTarget.style.transform = 'scale(1.005) translateX(5px)';
-                                    e.currentTarget.style.boxShadow = cold ? '0 0 15px rgba(255,0,85,0.3)' : 'inset 4px 0 0 #00f2ff';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.transform = 'scale(1) translateX(0)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
-                                <td style={styles.td}>{job.company || 'UNKNOWN'}</td>
-                                <td style={{ ...styles.td, fontWeight: '700', color: '#00f2ff' }}>{job.title || 'NULL'}</td>
-                                <td style={{ ...styles.td, opacity: 0.6 }}>{job.subject}</td>
-                                <td style={styles.td}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <select
-                                            value={job.status}
-                                            onChange={(e) => handleStatusChange(job.id, e.target.value)}
-                                            style={getStatusSelectStyle(job.status)}
-                                        >
-                                            <option value="Applied">APPLIED</option>
-                                            <option value="Interview">INTERVIEW</option>
-                                            <option value="Offer">OFFER</option>
-                                            <option value="Rejected">REJECTED</option>
-                                        </select>
-                                        {cold && (
-                                            <div style={styles.coldIndicator} title="SIGNAL_LOST: Lead has gone cold (10+ days)">!</div>
-                                        )}
-                                    </div>
-                                </td>
-                                <td style={{ ...styles.td, fontFamily: '"Roboto Mono", monospace', fontSize: '12px' }}>
-                                    {new Date(job.date).toLocaleDateString(undefined, { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\//g, '.')}
-                                </td>
-                                <td style={styles.td}>
-                                    <div style={styles.cmdGroup}>
-                                        <button
-                                            onClick={() => onDeepScan(job)}
-                                            style={styles.intelBtn}
-                                            title="DEEP_SCAN_TARGET"
-                                        >
-                                            INTEL
-                                        </button>
-                                        {showSimBtn && (
-                                            <button
-                                                onClick={() => onSimulateJob(job, cold ? 'follow-up' : 'interview')}
-                                                style={{ ...styles.simBtn, borderColor: cold ? '#ff0055' : '#00f2ff', color: cold ? '#ff0055' : '#00f2ff' }}
-                                                title={cold ? "GENERATE_SIGNAL_BOOSTER" : "INITIATE_TRAINING_SIM"}
-                                            >
-                                                {cold ? 'SIGNAL' : 'TRAIN'}
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => onDeleteJob(job.id)}
-                                            style={styles.deleteBtn}
-                                            title="TERMINATE_RECORD"
-                                        >
-                                            DEL
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-
-            {totalPages > 1 && (
-                <div style={styles.pagination}>
-                    <button
-                        onClick={handlePrev}
-                        disabled={currentPage === 1}
-                        style={{
-                            ...styles.pageBtn,
-                            opacity: currentPage === 1 ? 0.3 : 1,
-                            cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        &lt; PREV
-                    </button>
-                    <span style={styles.pageInfo}>
-                        SEQ {currentPage.toString().padStart(2, '0')}/{totalPages.toString().padStart(2, '0')}
-                    </span>
-                    <button
-                        onClick={handleNext}
-                        disabled={currentPage === totalPages}
-                        style={{
-                            ...styles.pageBtn,
-                            opacity: currentPage === totalPages ? 0.3 : 1,
-                            cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        NEXT &gt;
-                    </button>
-                </div>
-            )}
-        </div>
+      <div style={{
+        background: '#ffffff', border: '1px solid #d7e0ec', borderRadius: 14,
+        padding: '80px 40px', textAlign: 'center'
+      }}>
+        <div style={{ fontSize: 38, marginBottom: 16 }}>📭</div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: '#0f1728', marginBottom: 8 }}>No applications yet</div>
+        <div style={{ fontSize: 14, color: '#5b708a' }}>Sync your Gmail to import applications, or add one manually.</div>
+      </div>
     );
-};
+  }
 
-const getStatusSelectStyle = (status) => {
-    const baseColors = {
-        'Applied': { border: '#60a5fa', color: '#60a5fa' },
-        'Interview': { border: '#fbbf24', color: '#fbbf24' },
-        'Offer': { border: '#00ff9d', color: '#00ff9d' },
-        'Rejected': { border: '#ff0055', color: '#ff0055' }
-    };
+  return (
+    <div style={{ background: '#ffffff', border: '1px solid #d7e0ec', borderRadius: 14, overflow: 'hidden' }}>
 
-    const colors = baseColors[status] || baseColors['Applied'];
+      {/* Table header bar */}
+      <div style={{
+        padding: '14px 22px', borderBottom: '1px solid #d7e0ec',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 14, fontWeight: 650, color: '#0f1728' }}>Applications</span>
+          {activeFilter && (
+            <span style={{
+              fontSize: 11, color: '#8e5be8', background: '#8e5be812',
+              border: '1px solid #8e5be82c', padding: '2px 8px', borderRadius: 100
+            }}>{activeFilter}</span>
+          )}
+        </div>
+        <span style={{ fontSize: 12, color: '#5b708a' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+      </div>
 
-    return {
-        padding: '4px 8px',
-        borderRadius: '2px',
-        fontSize: '11px',
-        fontWeight: '800',
-        border: `1px solid ${colors.border}`,
-        backgroundColor: 'transparent',
-        color: colors.color,
-        cursor: 'pointer',
-        outline: 'none',
-        fontFamily: '"Roboto Mono", monospace',
-        transition: 'all 0.2s ease',
-        textShadow: `0 0 5px ${colors.color}80`
-    };
-};
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ background: '#f7fafe' }}>
+            {[
+              { key: 'company', label: 'Company', sortable: true },
+              { key: 'title', label: 'Role', sortable: false },
+              { key: 'subject', label: 'Subject', sortable: false },
+              { key: 'status', label: 'Status', sortable: false },
+              { key: 'date', label: 'Date', sortable: true },
+              { key: 'actions', label: 'Actions', sortable: false },
+            ].map(col => (
+              <th
+                key={col.key}
+                onClick={col.sortable ? () => toggleSort(col.key) : undefined}
+                style={{
+                  padding: '10px 20px', textAlign: 'left',
+                  fontSize: 11, fontWeight: 600, color: sortKey === col.key ? BRAND : '#6883a1',
+                  letterSpacing: '0.5px', textTransform: 'uppercase',
+                  cursor: col.sortable ? 'pointer' : 'default',
+                  userSelect: 'none', whiteSpace: 'nowrap'
+                }}
+              >
+                {col.label}
+                {col.sortable && sortKey === col.key && (
+                  <span style={{ marginLeft: 4 }}>{sortDir === -1 ? '↓' : '↑'}</span>
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {current.map((job, idx) => {
+            const cold = isCold(job.date);
+            const canTrain = job.status === 'Interview';
+            const color = companyColor(job.company);
+            return (
+              <tr
+                key={job.id}
+                style={{
+                  borderBottom: idx < current.length - 1 ? '1px solid #e5edf7' : 'none',
+                  borderLeft: cold ? '3px solid #f8717140' : '3px solid transparent',
+                  transition: 'background 0.1s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f6f9fe'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <td style={{ padding: '13px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                      background: `${color}18`, border: `1px solid ${color}30`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700, color
+                    }}>
+                      {(job.company || '?')[0].toUpperCase()}
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#0f1728' }}>
+                      {job.company || 'Unknown'}
+                    </span>
+                  </div>
+                </td>
+                <td style={{ padding: '13px 20px', fontSize: 14, color: '#3f5a78', fontWeight: 500 }}>
+                  {job.title || '—'}
+                </td>
+                <td style={{ padding: '13px 20px', fontSize: 12, color: '#6b839f', maxWidth: 220 }}>
+                  <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {job.subject || '—'}
+                  </span>
+                </td>
+                <td style={{ padding: '13px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <StatusBadge status={job.status} onChange={val => onUpdateJob(job.id, { status: val })} />
+                    {cold && (
+                      <span title="No activity in 10+ days" style={{
+                        width: 18, height: 18, borderRadius: '50%',
+                        background: '#f87171', color: '#fff', fontSize: 10, fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'help', flexShrink: 0
+                      }}>!</span>
+                    )}
+                  </div>
+                </td>
+                <td style={{ padding: '13px 20px', fontSize: 12, color: '#6b839f', whiteSpace: 'nowrap' }}>
+                  {new Date(job.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })}
+                </td>
+                <td style={{ padding: '13px 20px' }}>
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    <ActionBtn onClick={() => onDeepScan(job)} color="#a78bfa" title="Company intel">Intel</ActionBtn>
+                    {(cold || canTrain) && (
+                      <ActionBtn
+                        onClick={() => onSimulateJob(job, cold ? 'follow-up' : 'interview')}
+                        color={cold ? '#f87171' : '#8e5be8'}
+                        title={cold ? 'Generate follow-up' : 'Interview prep'}
+                      >
+                        {cold ? 'Follow Up' : 'Prep'}
+                      </ActionBtn>
+                    )}
+                    <ActionBtn onClick={() => onDeleteJob(job.id)} color="#f87171" title="Delete">✕</ActionBtn>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
 
-const styles = {
-    container: {
-        maxWidth: '1400px',
-        margin: '0 auto',
-        background: 'rgba(15, 17, 34, 0.6)',
-        backdropFilter: 'blur(15px)',
-        borderRadius: '4px',
-        border: '1px solid rgba(0, 242, 255, 0.2)',
-        overflow: 'hidden',
-        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.4)',
-        zIndex: 2,
-        position: 'relative'
-    },
-    tableHeader: {
-        padding: '15px 25px',
-        background: 'rgba(0, 242, 255, 0.05)',
-        borderBottom: '1px solid rgba(0, 242, 255, 0.2)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-    },
-    headerLabel: {
-        fontSize: '12px',
-        fontWeight: '900',
-        color: '#00f2ff',
-        fontFamily: '"Roboto Mono", monospace',
-        letterSpacing: '1px'
-    },
-    headerDecoration: {
-        height: '2px',
-        width: '50px',
-        background: 'linear-gradient(90deg, #00f2ff, transparent)'
-    },
-    empty: {
-        textAlign: 'center',
-        padding: '80px 20px',
-        color: '#00f2ff',
-        maxWidth: '1400px',
-        margin: '0 auto',
-        background: 'rgba(15, 17, 34, 0.6)',
-        backdropFilter: 'blur(15px)',
-        borderRadius: '4px',
-        border: '1px solid rgba(0, 242, 255, 0.2)',
-        fontFamily: '"Roboto Mono", monospace'
-    },
-    emptyGlitch: {
-        fontSize: '24px',
-        fontWeight: '900',
-        letterSpacing: '4px',
-        marginBottom: '10px'
-    },
-    emptySub: {
-        fontSize: '12px',
-        opacity: 0.6,
-        letterSpacing: '1px'
-    },
-    table: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        fontFamily: '"Inter", sans-serif'
-    },
-    th: {
-        textAlign: 'left',
-        padding: '20px 25px',
-        background: 'rgba(255, 255, 255, 0.02)',
-        color: 'rgba(255, 255, 255, 0.5)',
-        fontWeight: '800',
-        fontSize: '11px',
-        textTransform: 'uppercase',
-        letterSpacing: '2px',
-        fontFamily: '"Roboto Mono", monospace',
-        borderBottom: '1px solid rgba(0, 242, 255, 0.1)'
-    },
-    tr: {
-        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-        transition: 'all 0.2s ease',
-        borderLeft: '4px solid transparent'
-    },
-    td: {
-        padding: '20px 25px',
-        color: '#fff',
-        fontSize: '14px'
-    },
-    pagination: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: '40px',
-        padding: '30px',
-        background: 'rgba(0, 242, 255, 0.03)',
-        borderTop: '1px solid rgba(0, 242, 255, 0.1)'
-    },
-    pageBtn: {
-        padding: '8px 16px',
-        background: 'transparent',
-        color: '#00f2ff',
-        border: '1px solid rgba(0, 242, 255, 0.3)',
-        borderRadius: '2px',
-        cursor: 'pointer',
-        fontWeight: '900',
-        fontSize: '12px',
-        fontFamily: '"Roboto Mono", monospace',
-        transition: 'all 0.3s ease'
-    },
-    pageInfo: {
-        fontSize: '12px',
-        color: '#00f2ff',
-        fontWeight: '900',
-        fontFamily: '"Roboto Mono", monospace'
-    },
-    simBtn: {
-        background: 'rgba(0, 242, 255, 0.1)',
-        border: '1px solid #00f2ff',
-        color: '#00f2ff',
-        cursor: 'pointer',
-        fontSize: '10px',
-        fontWeight: '900',
-        fontFamily: '"Roboto Mono", monospace',
-        padding: '6px 12px',
-        borderRadius: '2px',
-        transition: 'all 0.2s ease'
-    },
-    intelBtn: {
-        background: 'rgba(112, 0, 255, 0.2)',
-        border: '1px solid #7000ff',
-        color: '#d4a5ff',
-        cursor: 'pointer',
-        fontSize: '10px',
-        fontWeight: '900',
-        fontFamily: '"Roboto Mono", monospace',
-        padding: '6px 12px',
-        borderRadius: '2px',
-        transition: 'all 0.2s ease'
-    },
-    deleteBtn: {
-        background: 'transparent',
-        border: '1px solid #ff005580',
-        color: '#ff0055',
-        cursor: 'pointer',
-        fontSize: '10px',
-        fontWeight: '900',
-        fontFamily: '"Roboto Mono", monospace',
-        padding: '6px 12px',
-        borderRadius: '2px',
-        transition: 'all 0.2s ease'
-    },
-    cmdGroup: {
-        display: 'flex',
-        gap: '8px'
-    },
-    coldIndicator: {
-        width: '18px',
-        height: '18px',
-        borderRadius: '50%',
-        background: '#ff0055',
-        color: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '12px',
-        fontWeight: '900',
-        animation: 'pulse-glow 1s infinite alternate',
-        cursor: 'help'
-    }
-};
-
-export default JobTable;
+      {totalPages > 1 && (
+        <div style={{
+          padding: '14px 22px', borderTop: '1px solid #d7e0ec',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        }}>
+          <span style={{ fontSize: 12, color: '#6b839f' }}>
+            Page {page} of {totalPages} · {filtered.length} results
+          </span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[['← Prev', page - 1, page === 1], ['Next →', page + 1, page === totalPages]].map(([label, target, disabled]) => (
+              <button
+                key={label}
+                onClick={() => !disabled && setPage(target)}
+                disabled={disabled}
+                style={{
+                  background: 'transparent', border: '1px solid #d7e0ec',
+                  color: disabled ? '#b7acc8' : '#6a5f7e',
+                  padding: '6px 14px', borderRadius: 7, fontSize: 12,
+                  cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
+                }}
+              >{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

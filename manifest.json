@@ -15,8 +15,18 @@
     "video"
   ],
   "host_permissions": [
+    "https://api.scitely.com/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*",
     "http://localhost:11434/*",
     "http://127.0.0.1:11434/*",
+    "http://127.0.0.1:8765/*",
+    "http://localhost:8765/*",
+    "http://127.0.0.1:8780/*",
+    "http://localhost:8780/*",
+    "https://*.ngrok-free.app/*",
+    "https://*.ngrok-free.dev/*",
+    "https://*.ngrok.io/*",
     "https://gmail.googleapis.com/*"
   ],
   "oauth2": {
@@ -26,7 +36,8 @@
     ]
   },
   "background": {
-    "service_worker": "assets/background.js"
+    "service_worker": "assets/background.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "src/popup/index.html"

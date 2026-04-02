@@ -1,7 +1,22 @@
-
 import React, { useState } from 'react';
 
-const AddJobForm = ({ onAdd, onCancel }) => {
+const BRAND = '#8e5be8';
+
+const Field = ({ label, children }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#5f7794', letterSpacing: '0.3px' }}>{label}</label>
+        {children}
+    </div>
+);
+
+const inputStyle = {
+    background: '#ffffff', border: '1px solid #d7e0ec', borderRadius: 10,
+    color: '#0f1728', padding: '11px 14px', fontSize: 14,
+    outline: 'none', fontFamily: 'inherit', width: '100%',
+    boxSizing: 'border-box'
+};
+
+export default function AddJobForm({ onAdd, onCancel }) {
     const [formData, setFormData] = useState({
         company: '',
         title: '',
@@ -10,263 +25,91 @@ const AddJobForm = ({ onAdd, onCancel }) => {
         date: new Date().toISOString().split('T')[0]
     });
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!formData.company || !formData.title) {
-            alert('CRITICAL: COMPANY AND ROLE DATA REQUIRED');
-            return;
-        }
+    const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-        const newJob = {
+    const handleSubmit = e => {
+        e.preventDefault();
+        if (!formData.company || !formData.title) return;
+        onAdd({
             id: 'manual_' + Date.now(),
             company: formData.company,
             title: formData.title,
-            subject: formData.subject || `MANUAL_ENTRY: ${formData.title} AT ${formData.company}`,
+            subject: formData.subject || `${formData.title} at ${formData.company}`,
             status: formData.status,
             date: new Date(formData.date).toISOString(),
             lastUpdated: new Date().toISOString(),
             manualEntry: true
-        };
-
-        onAdd(newJob);
-    };
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        });
     };
 
     return (
-        <div style={styles.overlay}>
-            <div style={styles.modal}>
-                <div style={styles.corners}>
-                    <div style={{ ...styles.corner, top: -1, left: -1, borderTop: '2px solid #00f2ff', borderLeft: '2px solid #00f2ff' }}></div>
-                    <div style={{ ...styles.corner, top: -1, right: -1, borderTop: '2px solid #00f2ff', borderRight: '2px solid #00f2ff' }}></div>
-                    <div style={{ ...styles.corner, bottom: -1, left: -1, borderBottom: '2px solid #00f2ff', borderLeft: '2px solid #00f2ff' }}></div>
-                    <div style={{ ...styles.corner, bottom: -1, right: -1, borderBottom: '2px solid #00f2ff', borderRight: '2px solid #00f2ff' }}></div>
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(244,247,251,0.7)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+            <div style={{
+                background: '#ffffff', border: '1px solid #d7e0ec', borderRadius: 16,
+                padding: '32px 28px', width: 480, boxShadow: '0 24px 80px rgba(0,0,0,0.5)'
+            }}>
+                <div style={{ marginBottom: 24 }}>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: '#0f1728', marginBottom: 4 }}>Add application</div>
+                    <div style={{ fontSize: 13, color: '#5b708a' }}>Manually log a job you applied to</div>
                 </div>
 
-                <div style={styles.header}>
-                    <h2 style={styles.title}>INITIALIZE_NEW_RECORD</h2>
-                    <div style={styles.headerLine}></div>
-                </div>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <Field label="Company *">
+                        <input name="company" value={formData.company} onChange={handleChange}
+                            placeholder="e.g. Stripe" required style={inputStyle}
+                            onFocus={e => e.target.style.borderColor = BRAND}
+                            onBlur={e => e.target.style.borderColor = '#d7e0ec'} />
+                    </Field>
 
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>TARGET_COMPANY*</label>
-                        <input
-                            type="text"
-                            name="company"
-                            value={formData.company}
-                            onChange={handleChange}
-                            style={styles.input}
-                            placeholder="INPUT_COMPANY_NAME"
-                            required
-                        />
-                    </div>
+                    <Field label="Role *">
+                        <input name="title" value={formData.title} onChange={handleChange}
+                            placeholder="e.g. Software Engineer" required style={inputStyle}
+                            onFocus={e => e.target.style.borderColor = BRAND}
+                            onBlur={e => e.target.style.borderColor = '#d7e0ec'} />
+                    </Field>
 
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>ASSIGNED_ROLE*</label>
-                        <input
-                            type="text"
-                            name="title"
-                            value={formData.title}
-                            onChange={handleChange}
-                            style={styles.input}
-                            placeholder="INPUT_ROLE_TITLE"
-                            required
-                        />
-                    </div>
+                    <Field label="Notes (optional)">
+                        <input name="subject" value={formData.subject} onChange={handleChange}
+                            placeholder="e.g. Applied via LinkedIn" style={inputStyle}
+                            onFocus={e => e.target.style.borderColor = BRAND}
+                            onBlur={e => e.target.style.borderColor = '#d7e0ec'} />
+                    </Field>
 
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>SUBJECT_METADATA</label>
-                        <input
-                            type="text"
-                            name="subject"
-                            value={formData.subject}
-                            onChange={handleChange}
-                            style={styles.input}
-                            placeholder="OPTIONAL_NOTES"
-                        />
-                    </div>
-
-                    <div style={styles.formRow}>
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>NODE_STATUS</label>
-                            <select
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
-                                style={styles.select}
-                            >
-                                <option value="Applied">APPLIED</option>
-                                <option value="Interview">INTERVIEW</option>
-                                <option value="Offer">OFFER</option>
-                                <option value="Rejected">REJECTED</option>
+                    <div style={{ display: 'flex', gap: 14 }}>
+                        <Field label="Status">
+                            <select name="status" value={formData.status} onChange={handleChange} style={{ ...inputStyle, cursor: 'pointer' }}>
+                                <option value="Applied">Applied</option>
+                                <option value="Assessment">Assessment</option>
+                                <option value="Interview">Interview</option>
+                                <option value="Offer">Offer</option>
+                                <option value="Rejected">Rejected</option>
                             </select>
-                        </div>
-
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>TIMESTAMP</label>
-                            <input
-                                type="date"
-                                name="date"
-                                value={formData.date}
-                                onChange={handleChange}
-                                style={styles.input}
-                            />
-                        </div>
+                        </Field>
+                        <Field label="Date">
+                            <input type="date" name="date" value={formData.date} onChange={handleChange} style={inputStyle}
+                                onFocus={e => e.target.style.borderColor = BRAND}
+                            onBlur={e => e.target.style.borderColor = '#d7e0ec'} />
+                        </Field>
                     </div>
 
-                    <div style={styles.buttonGroup}>
-                        <button type="button" onClick={onCancel} style={styles.cancelBtn}>
-                            ABORT_CMD
-                        </button>
-                        <button type="submit" style={styles.submitBtn}>
-                            EXECUTE_INITIALIZATION
-                        </button>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 8, justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={onCancel} style={{
+                            background: 'transparent', border: '1px solid #d7e0ec',
+                            color: '#6a5f7e', padding: '10px 20px', borderRadius: 8,
+                            fontSize: 13, cursor: 'pointer', fontFamily: 'inherit'
+                        }}>Cancel</button>
+                        <button type="submit" style={{
+                            background: BRAND, border: 'none', color: '#fff',
+                            padding: '10px 24px', borderRadius: 8,
+                            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
+                        }}>Add application</button>
                     </div>
                 </form>
             </div>
         </div>
     );
-};
-
-const styles = {
-    overlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(5, 7, 20, 0.8)',
-        backdropFilter: 'blur(10px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000
-    },
-    modal: {
-        background: 'rgba(15, 17, 34, 0.95)',
-        backdropFilter: 'blur(20px)',
-        borderRadius: '2px',
-        padding: '45px',
-        maxWidth: '550px',
-        width: '90%',
-        boxShadow: '0 0 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 242, 255, 0.1)',
-        border: '1px solid rgba(0, 242, 255, 0.2)',
-        position: 'relative'
-    },
-    corners: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        pointerEvents: 'none'
-    },
-    corner: {
-        position: 'absolute',
-        width: '15px',
-        height: '15px'
-    },
-    header: {
-        marginBottom: '35px'
-    },
-    title: {
-        margin: '0 0 10px 0',
-        fontSize: '20px',
-        fontWeight: '900',
-        color: '#00f2ff',
-        letterSpacing: '2px',
-        fontFamily: '"Roboto Mono", monospace'
-    },
-    headerLine: {
-        height: '2px',
-        width: '100%',
-        background: 'linear-gradient(90deg, #00f2ff, transparent)'
-    },
-    form: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '25px'
-    },
-    formGroup: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        flex: 1
-    },
-    formRow: {
-        display: 'flex',
-        gap: '20px'
-    },
-    label: {
-        fontSize: '11px',
-        fontWeight: '800',
-        color: 'rgba(255, 255, 255, 0.5)',
-        textTransform: 'uppercase',
-        letterSpacing: '1.5px',
-        fontFamily: '"Roboto Mono", monospace'
-    },
-    input: {
-        padding: '14px 18px',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '2px',
-        fontSize: '14px',
-        outline: 'none',
-        transition: 'all 0.3s',
-        background: 'rgba(255, 255, 255, 0.03)',
-        color: 'white',
-        fontFamily: '"Inter", sans-serif',
-        ':focus': {
-            border: '1px solid #00f2ff',
-            boxShadow: '0 0 10px rgba(0, 242, 255, 0.2)',
-            background: 'rgba(0, 242, 255, 0.05)'
-        }
-    },
-    select: {
-        padding: '14px 18px',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '2px',
-        fontSize: '14px',
-        outline: 'none',
-        background: 'rgba(255, 255, 255, 0.03)',
-        color: 'white',
-        cursor: 'pointer',
-        fontFamily: '"Inter", sans-serif'
-    },
-    buttonGroup: {
-        display: 'flex',
-        gap: '15px',
-        justifyContent: 'flex-end',
-        marginTop: '15px'
-    },
-    cancelBtn: {
-        padding: '14px 28px',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '2px',
-        background: 'transparent',
-        cursor: 'pointer',
-        fontWeight: '800',
-        color: 'rgba(255, 255, 255, 0.6)',
-        fontSize: '12px',
-        fontFamily: '"Roboto Mono", monospace',
-        transition: 'all 0.3s ease'
-    },
-    submitBtn: {
-        padding: '14px 28px',
-        border: '1px solid #00f2ff',
-        borderRadius: '2px',
-        background: 'rgba(0, 242, 255, 0.1)',
-        color: '#00f2ff',
-        cursor: 'pointer',
-        fontWeight: '800',
-        fontSize: '12px',
-        fontFamily: '"Roboto Mono", monospace',
-        boxShadow: '0 0 15px rgba(0, 242, 255, 0.2)',
-        transition: 'all 0.3s ease',
-        textTransform: 'uppercase'
-    }
-};
-
-export default AddJobForm;
+}

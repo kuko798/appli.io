@@ -19,29 +19,32 @@ const Popup = () => {
         chrome.tabs.create({ url: "src/dashboard/index.html" });
     };
 
+    const openSettings = () => {
+        chrome.runtime.openOptionsPage();
+    };
+
     return (
         <div style={styles.container}>
-            <div style={styles.grid}></div>
             <div style={styles.headerContainer}>
-                <h2 style={styles.header}>APPLI.IO <span style={styles.v}>v1.0</span></h2>
+                <h2 style={styles.header}>appli.io <span style={styles.v}>assistant</span></h2>
                 <div style={styles.statusLine}>
-                    <div style={{ ...styles.pulse, backgroundColor: isSyncing ? '#00f2ff' : '#00ff9d' }}></div>
-                    {isSyncing ? 'SYNC_ACTIVE' : 'SYSTEM_READY'}
+                    <div style={{ ...styles.pulse, backgroundColor: isSyncing ? '#7c6ded' : '#10b981' }}></div>
+                    {isSyncing ? 'Sync in progress' : 'Ready'}
                 </div>
             </div>
 
             <div style={styles.card}>
                 <div style={styles.formGroup}>
-                    <label style={styles.label}>TIME_WINDOW_RANGE</label>
+                    <label style={styles.label}>Sync window</label>
                     <select
                         value={range}
                         onChange={(e) => setRange(e.target.value)}
                         style={styles.select}
                     >
-                        <option value="1m">RANGE_30D</option>
-                        <option value="3m">RANGE_90D</option>
-                        <option value="6m">RANGE_180D</option>
-                        <option value="1y">RANGE_365D</option>
+                        <option value="1m">Last 30 days</option>
+                        <option value="3m">Last 90 days</option>
+                        <option value="6m">Last 180 days</option>
+                        <option value="1y">Last 1 year</option>
                     </select>
                 </div>
 
@@ -51,7 +54,7 @@ const Popup = () => {
                     style={{ ...styles.buttonPrimary, opacity: isSyncing ? 0.6 : 1 }}
                     className="glitch-hover"
                 >
-                    {isSyncing ? "SYNC_PENDING..." : "EXECUTE_SYNC"}
+                    {isSyncing ? "Syncing..." : "Sync Gmail"}
                 </button>
             </div>
 
@@ -60,12 +63,20 @@ const Popup = () => {
                 style={styles.buttonSecondary}
                 className="glitch-hover"
             >
-                OPEN_DASHBOARD_CMD
+                Open dashboard
+            </button>
+
+            <button
+                onClick={openSettings}
+                style={styles.buttonSecondary}
+                className="glitch-hover"
+            >
+                Configure LLM
             </button>
 
             {status && (
                 <div style={styles.status}>
-                    <span style={styles.cursor}>&gt;</span> {status}
+                    {status}
                 </div>
             )}
         </div>
@@ -74,9 +85,8 @@ const Popup = () => {
 
 const styles = {
     container: {
-        padding: '25px',
-        backgroundColor: '#0a0b1e',
-        background: 'radial-gradient(circle at 50% 50%, #1a1b3a 0%, #0a0b1e 100%)',
+        padding: '18px',
+        background: 'linear-gradient(180deg, #090f1f 0%, #050814 100%)',
         minHeight: '220px',
         width: '300px',
         display: 'flex',
@@ -86,80 +96,69 @@ const styles = {
         overflow: 'hidden',
         boxSizing: 'border-box'
     },
-    grid: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
-                     linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px)`,
-        backgroundSize: '20px 20px',
-        pointerEvents: 'none',
-        zIndex: 0
-    },
     headerContainer: {
         zIndex: 1,
         width: '100%',
-        marginBottom: '20px',
+        marginBottom: '14px',
         textAlign: 'left'
     },
     header: {
         margin: '0 0 5px 0',
-        color: '#00f2ff',
+        color: '#e6edf8',
         fontSize: '18px',
-        fontWeight: '900',
-        letterSpacing: '1px',
+        fontWeight: '800',
+        letterSpacing: '-0.3px',
         fontFamily: '"Inter", sans-serif'
     },
     v: {
-        fontSize: '10px',
-        opacity: 0.6
+        fontSize: '11px',
+        opacity: 0.7,
+        color: '#8ea1be'
     },
     statusLine: {
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
-        fontSize: '9px',
-        color: '#e0e0e0',
-        fontFamily: '"Roboto Mono", monospace',
-        fontWeight: '700'
+        fontSize: '11px',
+        color: '#8ea1be',
+        fontFamily: '"Inter", sans-serif',
+        fontWeight: '500'
     },
     pulse: {
-        width: '6px',
-        height: '6px',
+        width: '7px',
+        height: '7px',
         borderRadius: '50%',
-        boxShadow: '0 0 8px currentColor'
+        boxShadow: '0 0 10px currentColor'
     },
     card: {
-        background: 'rgba(255, 255, 255, 0.03)',
+        background: '#0d1424',
         backdropFilter: 'blur(10px)',
-        borderRadius: '2px',
-        border: '1px solid rgba(0, 242, 255, 0.2)',
-        padding: '15px',
+        borderRadius: '12px',
+        border: '1px solid #1c2942',
+        padding: '14px',
         width: '100%',
         boxSizing: 'border-box',
         zIndex: 1,
-        marginBottom: '15px'
+        marginBottom: '12px'
     },
     formGroup: {
-        marginBottom: '15px'
+        marginBottom: '12px'
     },
     label: {
-        fontSize: '10px',
-        color: 'rgba(255, 255, 255, 0.5)',
-        fontWeight: '800',
-        marginBottom: '8px',
+        fontSize: '12px',
+        color: '#8ea1be',
+        fontWeight: '600',
+        marginBottom: '6px',
         display: 'block',
-        fontFamily: '"Roboto Mono", monospace'
+        fontFamily: '"Inter", sans-serif'
     },
     select: {
         width: '100%',
-        padding: '10px',
-        borderRadius: '2px',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        background: 'rgba(255, 255, 255, 0.05)',
-        color: 'white',
+        padding: '10px 11px',
+        borderRadius: '8px',
+        border: '1px solid #1c2942',
+        background: '#111b30',
+        color: '#e6edf8',
         outline: 'none',
         fontSize: '12px',
         fontFamily: '"Inter", sans-serif'
@@ -167,43 +166,39 @@ const styles = {
     buttonPrimary: {
         width: '100%',
         padding: '12px',
-        borderRadius: '2px',
-        border: '1px solid #00f2ff',
-        background: 'rgba(0, 242, 255, 0.1)',
-        color: '#00f2ff',
-        fontWeight: '900',
-        fontSize: '11px',
-        fontFamily: '"Roboto Mono", monospace',
+        borderRadius: '8px',
+        border: '1px solid #7c6ded',
+        background: '#7c6ded',
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: '12px',
+        fontFamily: '"Inter", sans-serif',
         cursor: 'pointer',
-        transition: 'all 0.3s',
-        boxShadow: '0 0 10px rgba(0, 242, 255, 0.1)',
-        textTransform: 'uppercase'
+        transition: 'all 0.2s'
     },
     buttonSecondary: {
         width: '100%',
-        padding: '12px',
-        borderRadius: '2px',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
+        padding: '11px 12px',
+        borderRadius: '8px',
+        border: '1px solid #223352',
         background: 'transparent',
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontWeight: '800',
-        fontSize: '11px',
-        fontFamily: '"Roboto Mono", monospace',
+        color: '#a8b8d4',
+        fontWeight: '600',
+        fontSize: '12px',
+        fontFamily: '"Inter", sans-serif',
         cursor: 'pointer',
         zIndex: 1,
-        transition: 'all 0.3s'
+        transition: 'all 0.2s',
+        marginBottom: '8px'
     },
     status: {
         zIndex: 1,
         width: '100%',
-        marginTop: '15px',
-        fontSize: '10px',
-        color: '#00ff9d',
-        fontFamily: '"Roboto Mono", monospace',
-        fontWeight: '600'
-    },
-    cursor: {
-        animation: 'blink 1s step-end infinite'
+        marginTop: '10px',
+        fontSize: '11px',
+        color: '#8ea1be',
+        fontFamily: '"Inter", sans-serif',
+        fontWeight: '500'
     }
 };
 

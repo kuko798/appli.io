@@ -5,7 +5,7 @@
   <title>Appli.io Options</title>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       padding: 20px;
       max-width: 600px;
       margin: 0 auto;
@@ -35,41 +35,88 @@
       cursor: pointer;
     }
 
-    button:hover { background-color: #357abd; }
+    button:hover {
+      background-color: #357abd;
+    }
 
-    #status { margin-top: 10px; color: green; font-weight: bold; }
+    #status {
+      margin-top: 10px;
+      color: green;
+      font-weight: bold;
+    }
 
-    .help-text { font-size: 0.9em; color: #666; margin-bottom: 10px; }
+    .help-text {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 10px;
+    }
 
-    code { background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; }
+    code {
+      background-color: #f0f0f0;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
 
-    .section { border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; margin-bottom: 20px; }
+    .section {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
 
-    .section h3 { margin: 0 0 12px 0; font-size: 1em; color: #333; }
+    .section h3 {
+      margin: 0 0 12px 0;
+      font-size: 1em;
+      color: #333;
+    }
 
-    #modelList { margin-top: 8px; font-size: 0.85em; color: #555; min-height: 1.2em; }
+    #modelList {
+      margin-top: 8px;
+      font-size: 0.85em;
+      color: #555;
+      min-height: 1.2em;
+    }
   </style>
 </head>
 
 <body>
   <h2>Appli.io Settings</h2>
-  <p style="color:#555; font-size:0.9em;">No API keys needed — Appli.io runs entirely on your local machine using Ollama.</p>
+  <p style="color:#555; font-size:0.9em;"><strong>Gmail sync</strong> classifies mail only through the Python service below. The LLM provider is for interview/resume chat features, not inbox labels.</p>
 
   <div class="section">
-    <h3>Local LLM (Ollama)</h3>
-
-    <label for="ollamaUrl">Ollama Server URL</label>
-    <div class="help-text">
-      Default: <code>http://localhost:11434</code> — change only if Ollama runs on a different host/port.
+    <h3>Python email classifier (required for Gmail sync)</h3>
+    <p class="help-text">
+      Run from repo: <code>cd python_classifier</code> → <code>pip install -r requirements.txt</code> → <code>python service.py</code>
+      (listens on <code>127.0.0.1:8765</code>). Vite dev dashboard: use <code>http://localhost:5173/appli-classifier</code> if the dev server proxy is enabled.
+    </p>
+    <label for="pythonClassifierUrl">Python service base URL</label>
+    <input type="text" id="pythonClassifierUrl" placeholder="http://127.0.0.1:8765 or http://localhost:5173/appli-classifier">
+    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+      <button id="testPython" type="button" style="background-color: #059669; padding: 9px 15px;">Test Python service</button>
     </div>
-    <input type="text" id="ollamaUrl" placeholder="http://localhost:11434">
+    <div id="pythonStatus" style="font-size: 0.85em; min-height: 1.2em;"></div>
+  </div>
+
+  <div class="section">
+    <h3>LLM Provider (interview simulator, resume tools — not Gmail labels)</h3>
+
+    <label for="ollamaUrl">Base URL</label>
+    <div class="help-text">
+      Local PyTorch server default: <code>http://localhost:8000</code> (run <code>pytorch_chat_server/server.py</code>; the extension calls <code>/v1</code> endpoints)
+    </div>
+    <input type="text" id="ollamaUrl" placeholder="http://localhost:8000">
 
     <label for="ollamaModel">Model Name</label>
     <div class="help-text">
-      Any model you've pulled with <code>ollama pull &lt;model&gt;</code>.<br>
-      Recommended: <code>llama3.2</code> &nbsp;|&nbsp; Fast: <code>phi3.5</code> &nbsp;|&nbsp; Powerful: <code>mistral</code>
+      Must match the Hugging Face id loaded by your server (default <code>Qwen/Qwen2.5-1.5B-Instruct</code>). Larger: <code>Qwen/Qwen2.5-7B-Instruct</code>.
     </div>
-    <input type="text" id="ollamaModel" placeholder="llama3.2">
+    <input type="text" id="ollamaModel" placeholder="Qwen/Qwen2.5-1.5B-Instruct">
+
+    <label for="llmApiKey">API Key</label>
+    <div class="help-text">
+      Leave blank for local PyTorch server unless you set <code>APPLI_PYTORCH_API_KEY</code> or use a hosted API.
+    </div>
+    <input type="text" id="llmApiKey" placeholder="sk-scitely-...">
 
     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px;">
       <button id="test" style="background-color: #6b7280; padding: 9px 15px;">Test Connection</button>

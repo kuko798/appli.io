@@ -1,310 +1,253 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { fetchCompanyIntel } from '../../services/companyIntelService.js';
 
-import React, { useState, useEffect, useRef } from 'react';
-import LocalLLM from '../../background/localLLM.js';
+const BRAND = '#8e5be8';
+const STEP_INTERVAL_MS = 320;
 
 const DeepScan = ({ job, onCancel }) => {
-    const [scanSteps, setScanSteps] = useState([]);
-    const [isScanning, setIsScanning] = useState(false);
+    const [phase, setPhase] = useState('ready'); // ready | scanning | done | error
+    const [steps, setSteps] = useState([]);
     const [report, setReport] = useState(null);
+    const [errorDetail, setErrorDetail] = useState(null);
+    const [elapsedSec, setElapsedSec] = useState(0);
     const scrollRef = useRef(null);
-
-    const steps = [
-        "INITIALIZING_VORTEX_PROTOCOL...",
-        "STABLIZING_COMMS_RELAY...",
-        `TARGETING_ENTITY: ${job.company.toUpperCase()}`,
-        "SEARCHING_GLOBAL_DATABASE...",
-        "ANALYZING_MARKET_SENTIMENT...",
-        "EXTRACTING_CULTURAL_FEEDS...",
-        "DECRYPTING_INTERVIEW_PATTERNS...",
-        "FINALIZING_INTELLIGENCE_REPORT..."
-    ];
+    const stepIntervalRef = useRef(null);
 
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [scanSteps]);
+        if (phase !== 'scanning') {
+            setElapsedSec(0);
+            return;
+        }
+        const t = setInterval(() => setElapsedSec((s) => s + 1), 1000);
+        return () => clearInterval(t);
+    }, [phase]);
 
-    const runScan = () => {
-        setIsScanning(true);
-        setScanSteps([]);
-        let currentStep = 0;
-        const interval = setInterval(() => {
-            if (currentStep < steps.length) {
-                setScanSteps(prev => [...prev, steps[currentStep]]);
-                currentStep++;
-            } else {
-                clearInterval(interval);
-                fetchDeepScan();
+    useEffect(() => {
+        return () => {
+            if (stepIntervalRef.current) {
+                clearInterval(stepIntervalRef.current);
+                stepIntervalRef.current = null;
             }
-        }, 600);
+        };
+    }, []);
+
+    const scanStepLabels = [
+        `Searching for ${job.company}…`,
+        'Analyzing market position…',
+        'Reading culture signals…',
+        'Scanning interview patterns…',
+        'Compiling intel report…',
+    ];
+
+    const clearStepTimer = () => {
+        if (stepIntervalRef.current) {
+            clearInterval(stepIntervalRef.current);
+            stepIntervalRef.current = null;
+        }
     };
 
-    const fetchDeepScan = async () => {
+    const runScan = () => {
+        setErrorDetail(null);
+        setPhase('scanning');
+        setSteps([]);
+        clearStepTimer();
+        let i = 0;
+        stepIntervalRef.current = setInterval(() => {
+            if (i < scanStepLabels.length) {
+                setSteps(prev => [...prev, scanStepLabels[i++]]);
+                scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, STEP_INTERVAL_MS);
+        fetchReport();
+    };
+
+    const fetchReport = async () => {
         try {
-            const prompt = `You are a high-level corporate intelligence AI.
-Provide a "Deep Scan" intelligence report for the company "${job.company}".
-The user is applying for the role of "${job.title || 'a position'}".
-
-Format the response in a futuristic terminal style with the following sections:
-1. [EXECUTIVE_SUMMARY] - 2-3 sentences about what the company does and its market position.
-2. [CULTURAL_DNA] - Insights into their work culture and values.
-3. [RECENT_INTEL] - Recent news, product launches, or market shifts (based on your training data).
-4. [TACTICAL_ADVICE] - 3 specific tips for interviewing at this specific company.
-5. [SENTIMENT_ANALYSIS] - A brief "Risk vs Reward" assessment.
-
-Use a techy, cyberpunk/terminal tone. Use brackets for headers.`;
-
-            const report = await LocalLLM.generate({
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.5
+            const result = await fetchCompanyIntel({
+                company: job.company,
+                title: job.title || 'a candidate',
+                temperature: 0.4
             });
-
-            setReport(report);
-            setIsScanning(false);
-        } catch (error) {
-            setScanSteps(prev => [...prev, "[ERROR] INTELLIGENCE_GATHERING_FAILED. RETRY_LATER."]);
-            setIsScanning(false);
+            clearStepTimer();
+            setReport(result);
+            setSteps((prev) => (prev.length >= scanStepLabels.length ? prev : [...scanStepLabels]));
+            setPhase('done');
+        } catch (err) {
+            clearStepTimer();
+            console.error('[DeepScan]', err);
+            const msg = err?.message || String(err);
+            setErrorDetail(msg.length > 220 ? `${msg.slice(0, 220)}…` : msg);
+            setPhase('error');
         }
     };
 
     return (
-        <div style={styles.overlay}>
-            <div style={styles.modal}>
-                <div style={styles.header}>
-                    <div style={styles.titleGroup}>
-                        <div style={styles.glitchBox}>DEEP_SCAN</div>
-                        <span style={styles.target}>TARGET: {job.company}</span>
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 1100,
+            background: 'rgba(244,247,251,0.76)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+            <div style={{
+                width: 780, maxHeight: '88vh', background: '#ffffff',
+                border: '1px solid #d7e0ec', borderRadius: 16,
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                boxShadow: '0 20px 60px rgba(15,23,40,0.14)'
+            }}>
+                {/* Header */}
+                <div style={{
+                    padding: '18px 24px', borderBottom: '1px solid #d7e0ec',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    flexShrink: 0
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                            width: 36, height: 36, borderRadius: 10, background: '#f3eaff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 15, fontWeight: 700, color: '#6f5b90'
+                        }}>
+                            {(job.company || '?')[0].toUpperCase()}
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f1728' }}>Company Intel</div>
+                            <div style={{ fontSize: 12, color: '#6f8299', marginTop: 1 }}>{job.company}</div>
+                        </div>
                     </div>
-                    <button onClick={onCancel} style={styles.closeBtn}>EXIT_TERMINAL</button>
+                    <button onClick={onCancel} style={{
+                        background: '#ffffff', border: '1px solid #d7e0ec',
+                        color: '#6a5f7e', padding: '6px 14px', borderRadius: 7,
+                        fontSize: 13, cursor: 'pointer', fontFamily: 'inherit'
+                    }}>Close</button>
                 </div>
 
-                <div style={styles.terminalContainer}>
-                    {!isScanning && !report ? (
-                        <div style={styles.readyScreen}>
-                            <div style={styles.readyText}>INTELLIGENCE_LINK_READY</div>
-                            <button onClick={runScan} style={styles.readyBtn}>INITIATE_VORTEX_DAEMON</button>
-                        </div>
-                    ) : (
-                        <>
-                            <div style={styles.log}>
-                                {scanSteps.map((step, i) => (
-                                    <div key={i} style={styles.logStep}>
-                                        <span style={styles.prompt}>$</span> {step}
-                                    </div>
-                                ))}
-                                {isScanning && <div style={styles.cursor}>_</div>}
-                                <div ref={scrollRef} />
+                {/* Body */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
+
+                    {phase === 'ready' && (
+                        <div style={{ textAlign: 'center', padding: '60px 40px' }}>
+                            <div style={{ fontSize: 32, marginBottom: 16 }}>🔍</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: '#0f1728', marginBottom: 8 }}>
+                                Ready to research {job.company}
                             </div>
+                            <div style={{ fontSize: 14, color: '#5b708a', marginBottom: 32, maxWidth: 360, margin: '0 auto 32px' }}>
+                                Get culture insights, recent news, interview tips, and a risk/reward assessment.
+                            </div>
+                            <button onClick={runScan} style={{
+                                background: BRAND, color: '#fff', border: 'none',
+                                padding: '12px 32px', borderRadius: 10, fontSize: 14,
+                                fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
+                            }}>
+                                Run Analysis
+                            </button>
+                        </div>
+                    )}
 
-                            {!isScanning && report && (
-                                <div style={styles.reportContainer}>
-                                    <div style={styles.reportHeader}>[INTELLIGENCE_REPORT_V1.0.4]</div>
-                                    <pre style={styles.reportContent}>{report}</pre>
-
-                                    <div style={styles.commandSection}>
-                                        <div style={styles.commandHeader}>[COMMAND_LINK_INTERFACE]</div>
-                                        <div style={styles.commandGrid}>
-                                            <button onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(job.company + ' recent news')}&tbm=nws`, '_blank')} style={styles.cmdBtn}>
-                                                [ACCESS_GOOGLE_NEWS]
-                                            </button>
-                                            <button onClick={() => window.open(`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(job.company)}`, '_blank')} style={styles.cmdBtn}>
-                                                [ACCESS_LINKEDIN_INTEL]
-                                            </button>
-                                            <button onClick={() => window.open(`https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(job.company)}`, '_blank')} style={styles.cmdBtn}>
-                                                [ACCESS_GLASSDOOR]
-                                            </button>
-                                            <button onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(job.company + ' official site')}`, '_blank')} style={styles.cmdBtn}>
-                                                [ACCESS_WEBSITE]
-                                            </button>
-                                        </div>
+                    {(phase === 'scanning' || (phase === 'done' && steps.length > 0 && !report)) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {steps.map((s, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{
+                                        width: 20, height: 20, borderRadius: '50%',
+                                        background: '#10b98120', border: '1px solid #10b98150',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 11, color: '#10b981', flexShrink: 0
+                                    }}>✓</div>
+                                    <span style={{ fontSize: 14, color: '#4b6078' }}>{s}</span>
+                                </div>
+                            ))}
+                            {phase === 'scanning' && (
+                                <div style={{ marginTop: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div style={{
+                                            width: 20, height: 20, borderRadius: '50%',
+                                            border: `2px solid ${BRAND}`, borderTopColor: 'transparent',
+                                            animation: 'spin 0.8s linear infinite', flexShrink: 0
+                                        }} />
+                                        <span style={{ fontSize: 14, color: '#5b708a' }}>Working…</span>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#7d92a8', marginTop: 10, lineHeight: 1.5, maxWidth: 420 }}>
+                                        Search and synthesis usually finish in <strong>under a minute</strong> on a small local model; slower CPUs may take longer.
+                                        {elapsedSec > 0 && (
+                                            <span> Elapsed: {elapsedSec}s</span>
+                                        )}
                                     </div>
                                 </div>
                             )}
-                        </>
+                            <div ref={scrollRef} />
+                        </div>
+                    )}
+
+                    {phase === 'done' && report && (
+                        <div>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #d7e0ec'
+                            }}>
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+                                <span style={{ fontSize: 13, color: '#10b981', fontWeight: 600 }}>Analysis complete</span>
+                            </div>
+
+                            <div style={{ fontSize: 14, color: '#4b6078', lineHeight: 1.8, whiteSpace: 'pre-wrap', marginBottom: 28 }}>
+                                {report}
+                            </div>
+
+                            <div style={{ borderTop: '1px solid #d7e0ec', paddingTop: 20 }}>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: '#6f8299', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                    External links
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                    {[
+                                        { label: 'Google News', url: `https://www.google.com/search?q=${encodeURIComponent(job.company + ' recent news')}&tbm=nws` },
+                                        { label: 'LinkedIn', url: `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(job.company)}` },
+                                        { label: 'Glassdoor', url: `https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(job.company)}` },
+                                        { label: 'Company Website', url: `https://www.google.com/search?q=${encodeURIComponent(job.company + ' official site')}` },
+                                    ].map(link => (
+                                        <button key={link.label} onClick={() => window.open(link.url, '_blank')} style={{
+                                            background: '#ffffff', border: '1px solid #d7e0ec',
+                                            color: '#4b6078', padding: '10px 16px', borderRadius: 8,
+                                            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                                            fontFamily: 'inherit', textAlign: 'left',
+                                            transition: 'all 0.15s'
+                                        }}
+                                            onMouseEnter={e => { e.currentTarget.style.borderColor = `${BRAND}60`; e.currentTarget.style.color = '#0f1728'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d7e0ec'; e.currentTarget.style.color = '#4b6078'; }}
+                                        >
+                                            {link.label} ↗
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {phase === 'error' && (
+                        <div style={{ textAlign: 'center', padding: '60px 40px' }}>
+                            <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: '#0f1728', marginBottom: 8 }}>Analysis failed</div>
+                            <div style={{ fontSize: 14, color: '#5b708a', marginBottom: 12 }}>
+                                Company Intel uses DuckDuckGo search, then your OpenAI-compatible chat server (default <code style={{ fontSize: 12 }}>pytorch_chat_server</code> on port 8000). Run <code style={{ fontSize: 12 }}>company_intel/server.py</code> on port 8780 and keep the chat backend on 8000.
+                            </div>
+                            {errorDetail && (
+                                <div style={{
+                                    fontSize: 12, color: '#64748b', marginBottom: 20, textAlign: 'left',
+                                    maxWidth: 520, marginLeft: 'auto', marginRight: 'auto',
+                                    padding: 12, background: '#f8fafc', borderRadius: 8,
+                                    border: '1px solid #e2e8f0', fontFamily: 'ui-monospace, monospace',
+                                    wordBreak: 'break-word'
+                                }}>
+                                    {errorDetail}
+                                </div>
+                            )}
+                            <button onClick={() => { setPhase('ready'); setSteps([]); setErrorDetail(null); }} style={{
+                                background: '#ffffff', border: '1px solid #d7e0ec',
+                                color: '#4b6078', padding: '10px 24px', borderRadius: 8,
+                                fontSize: 13, cursor: 'pointer', fontFamily: 'inherit'
+                            }}>Try again</button>
+                        </div>
                     )}
                 </div>
-
-                {/* Corner Accents */}
-                <div style={{ ...styles.corner, top: 0, left: 0, borderTop: '2px solid #7000ff', borderLeft: '2px solid #7000ff' }}></div>
-                <div style={{ ...styles.corner, top: 0, right: 0, borderTop: '2px solid #7000ff', borderRight: '2px solid #7000ff' }}></div>
-                <div style={{ ...styles.corner, bottom: 0, left: 0, borderBottom: '2px solid #7000ff', borderLeft: '2px solid #7000ff' }}></div>
-                <div style={{ ...styles.corner, bottom: 0, right: 0, borderBottom: '2px solid #7000ff', borderRight: '2px solid #7000ff' }}></div>
             </div>
         </div>
     );
-};
-
-const styles = {
-    overlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(2, 3, 8, 0.95)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1100,
-        backdropFilter: 'blur(15px)'
-    },
-    modal: {
-        width: '900px',
-        height: '85vh',
-        background: '#05060f',
-        border: '1px solid #7000ff50',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        boxShadow: '0 0 100px rgba(112, 0, 255, 0.2)',
-        overflow: 'hidden'
-    },
-    header: {
-        background: 'rgba(112, 0, 255, 0.1)',
-        padding: '15px 25px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid #7000ff30'
-    },
-    titleGroup: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '20px'
-    },
-    glitchBox: {
-        background: '#7000ff',
-        color: '#fff',
-        padding: '4px 12px',
-        fontSize: '12px',
-        fontWeight: '900',
-        fontFamily: '"Roboto Mono", monospace',
-        letterSpacing: '2px'
-    },
-    target: {
-        fontFamily: '"Roboto Mono", monospace',
-        fontSize: '12px',
-        color: '#d4a5ff',
-        opacity: 0.8
-    },
-    closeBtn: {
-        background: 'transparent',
-        border: '1px solid #ff0055',
-        color: '#ff0055',
-        padding: '4px 12px',
-        fontSize: '11px',
-        fontFamily: '"Roboto Mono", monospace',
-        cursor: 'pointer',
-        fontWeight: 'bold'
-    },
-    terminalContainer: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        overflowY: 'auto',
-        padding: '30px'
-    },
-    readyScreen: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '25px'
-    },
-    readyText: {
-        fontSize: '18px',
-        fontFamily: '"Roboto Mono", monospace',
-        color: '#7000ff',
-        fontWeight: '900',
-        letterSpacing: '4px'
-    },
-    readyBtn: {
-        background: 'transparent',
-        border: '1px solid #7000ff',
-        color: '#7000ff',
-        padding: '15px 30px',
-        fontFamily: '"Roboto Mono", monospace',
-        cursor: 'pointer',
-        fontWeight: '900',
-        transition: 'all 0.3s ease'
-    },
-    log: {
-        fontFamily: '"Roboto Mono", monospace',
-        fontSize: '13px',
-        color: '#00f2ff',
-        marginBottom: '30px'
-    },
-    logStep: {
-        marginBottom: '8px'
-    },
-    prompt: {
-        color: '#ff0055',
-        marginRight: '10px'
-    },
-    cursor: {
-        display: 'inline-block',
-        width: '8px',
-        height: '15px',
-        background: '#00f2ff',
-        animation: 'twinkle 1s infinite'
-    },
-    reportContainer: {
-        borderTop: '1px dashed rgba(112, 0, 255, 0.3)',
-        paddingTop: '30px'
-    },
-    reportHeader: {
-        fontFamily: '"Roboto Mono", monospace',
-        fontSize: '18px',
-        fontWeight: '900',
-        color: '#7000ff',
-        marginBottom: '20px',
-        textShadow: '0 0 10px rgba(112, 0, 255, 0.5)'
-    },
-    reportContent: {
-        fontFamily: '"Inter", sans-serif',
-        fontSize: '15px',
-        lineHeight: '1.8',
-        color: '#e0e0e0',
-        whiteSpace: 'pre-wrap',
-        wordWrap: 'break-word'
-    },
-    corner: {
-        position: 'absolute',
-        width: '20px',
-        height: '20px',
-        pointerEvents: 'none'
-    },
-    commandSection: {
-        marginTop: '30px',
-        borderTop: '1px dashed rgba(112, 0, 255, 0.3)',
-        paddingTop: '20px'
-    },
-    commandHeader: {
-        fontSize: '12px',
-        color: '#7000ff',
-        fontWeight: '900',
-        marginBottom: '15px',
-        fontFamily: '"Roboto Mono", monospace',
-        letterSpacing: '2px'
-    },
-    commandGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '15px'
-    },
-    cmdBtn: {
-        background: 'rgba(112, 0, 255, 0.1)',
-        border: '1px solid #7000ff',
-        color: '#d4a5ff',
-        padding: '12px',
-        cursor: 'pointer',
-        fontFamily: '"Roboto Mono", monospace',
-        fontSize: '11px',
-        fontWeight: 'bold',
-        textAlign: 'center',
-        transition: 'all 0.2s ease',
-        textTransform: 'uppercase'
-    }
 };
 
 export default DeepScan;

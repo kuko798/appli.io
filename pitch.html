@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appli.io — Pitch Deck</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f0f13;
+      color: #f0f0f0;
+      overflow: hidden;
+    }
+
+    .deck {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      display: none;
+      width: 100%;
+      height: 100%;
+      padding: 56px 80px;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+    }
+    .slide.active { display: flex; }
+
+    .slide-num {
+      position: absolute;
+      bottom: 28px;
+      right: 40px;
+      font-size: 13px;
+      color: #444;
+      letter-spacing: 1px;
+    }
+
+    /* Logo header used on every slide except cover */
+    .slide-logo {
+      position: absolute;
+      top: 28px;
+      left: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .slide-logo svg { width: 28px; height: 28px; }
+    .slide-logo span {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .slide-logo span em {
+      font-style: normal;
+      background: linear-gradient(135deg, #7c6ded, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Divider line under logo */
+    .slide-bar {
+      position: absolute;
+      top: 68px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, #7c6ded22, #7c6ded55, #7c6ded22);
+    }
+
+    /* Nav */
+    .nav {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 100;
+    }
+    .nav button {
+      background: #1e1e28;
+      border: 1px solid #333;
+      color: #ccc;
+      padding: 8px 22px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .nav button:hover { background: #2a2a38; }
+
+    /* Typography */
+    .eyebrow {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: #7c6ded;
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    h2 {
+      font-size: clamp(26px, 3.8vw, 48px);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      letter-spacing: -0.5px;
+    }
+    .sub {
+      font-size: clamp(14px, 1.6vw, 19px);
+      color: #999;
+      max-width: 700px;
+      line-height: 1.65;
+    }
+    .grad {
+      background: linear-gradient(135deg, #7c6ded, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Cards */
+    .cards { display: grid; gap: 16px; margin-top: 8px; }
+    .cards.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .cards.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .cards.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .card {
+      background: #16161f;
+      border: 1px solid #252530;
+      border-radius: 14px;
+      padding: 24px 20px;
+    }
+    .card-icon { font-size: 26px; margin-bottom: 12px; }
+    .card h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .card p { font-size: 13px; color: #888; line-height: 1.6; }
+
+    /* Stats */
+    .stats { display: flex; gap: 48px; margin-top: 36px; }
+    .stat-num {
+      font-size: clamp(36px, 4.5vw, 58px);
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, #7c6ded, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 13px; color: #777; margin-top: 6px; max-width: 160px; line-height: 1.4; }
+
+    /* Steps */
+    .steps { display: flex; gap: 0; margin-top: 20px; }
+    .step { flex: 1; padding: 20px; position: relative; }
+    .step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -8px;
+      top: 38px;
+      color: #333;
+      font-size: 22px;
+    }
+    .step-num {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: #7c6ded18;
+      border: 1px solid #7c6ded44;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #a78bfa;
+      margin-bottom: 12px;
+    }
+    .step h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .step p { font-size: 13px; color: #888; line-height: 1.5; }
+
+    /* Tags */
+    .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+    .tag {
+      background: #1a1a26;
+      border: 1px solid #2e2e3e;
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px;
+      color: #bbb;
+    }
+
+    /* Quote */
+    .quote {
+      font-size: clamp(17px, 2.2vw, 26px);
+      font-style: italic;
+      color: #ccc;
+      border-left: 3px solid #7c6ded;
+      padding-left: 24px;
+      margin: 24px 0;
+      max-width: 680px;
+      line-height: 1.55;
+    }
+
+    /* Pill badge */
+    .badge {
+      display: inline-block;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-right: 10px;
+      margin-top: 8px;
+    }
+    .badge.fill { background: linear-gradient(135deg, #7c6ded, #a855f7); color: #fff; }
+    .badge.ghost { background: transparent; border: 1px solid #333; color: #bbb; }
+
+    /* Team card */
+    .team-cards { display: flex; gap: 28px; margin-top: 28px; }
+    .team-card {
+      flex: 1;
+      background: #16161f;
+      border: 1px solid #252530;
+      border-radius: 16px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .team-avatar {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c6ded33, #f472b633);
+      border: 2px solid #7c6ded44;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      overflow: hidden;
+    }
+    .team-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .team-name { font-size: 18px; font-weight: 700; }
+    .team-role { font-size: 13px; color: #7c6ded; font-weight: 600; letter-spacing: 0.5px; }
+    .team-bio { font-size: 13px; color: #888; line-height: 1.6; }
+    .team-links { display: flex; gap: 10px; margin-top: 4px; }
+    .team-link {
+      font-size: 12px; color: #7c6ded;
+      text-decoration: none;
+      border: 1px solid #7c6ded44;
+      border-radius: 6px;
+      padding: 4px 12px;
+    }
+
+    /* Market circles */
+    .tam-wrap { display: flex; align-items: flex-end; gap: 40px; margin-top: 28px; }
+    .tam-circle {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+      border-radius: 50%; flex-shrink: 0; position: relative;
+    }
+    .tam-circle.big   { width: 230px; height: 230px; background: #7c6ded18; border: 2px solid #7c6ded55; }
+    .tam-circle.mid   { width: 175px; height: 175px; background: #a855f718; border: 2px solid #a855f755; }
+    .tam-circle.small { width: 125px; height: 125px; background: #f472b618; border: 2px solid #f472b655; }
+    .tam-circle .label { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 4px; }
+    .tam-circle .val { font-size: 24px; font-weight: 800; line-height: 1; }
+    .tam-circle .desc { font-size: 10px; color: #666; margin-top: 6px; max-width: 110px; line-height: 1.4; padding: 0 8px; }
+
+    /* Timeline / roadmap */
+    .roadmap { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; max-width: 800px; }
+    .rm-row { display: flex; gap: 20px; align-items: flex-start; }
+    .rm-dot {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+      background: linear-gradient(135deg, #7c6ded, #f472b6);
+    }
+    .rm-line { width: 2px; background: #252530; margin: 0 6px; flex-shrink: 0; }
+    .rm-quarter { font-size: 12px; color: #7c6ded; font-weight: 700; letter-spacing: 1px; min-width: 80px; margin-top: 2px; }
+    .rm-text h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .rm-text p { font-size: 13px; color: #888; line-height: 1.5; }
+
+    /* Demo slide */
+    .demo-frame {
+      flex: 1;
+      border: 2px dashed #2e2e3e;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 20px;
+      background: #12121a;
+      min-height: 300px;
+      color: #444;
+      font-size: 15px;
+      text-align: center;
+      padding: 32px;
+    }
+    .demo-frame .demo-icon { font-size: 48px; opacity: 0.5; }
+    .demo-frame p { max-width: 400px; line-height: 1.6; font-size: 14px; }
+
+    /* Revenue table */
+    .rev-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+    .rev-table th {
+      text-align: left; padding: 10px 16px;
+      color: #666; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      border-bottom: 1px solid #222;
+    }
+    .rev-table td { padding: 14px 16px; border-bottom: 1px solid #1a1a22; vertical-align: top; }
+    .rev-table tr:last-child td { border-bottom: none; }
+    .rev-table .tier { font-weight: 700; font-size: 15px; }
+    .rev-table .price { font-weight: 800; font-size: 18px; color: #a78bfa; }
+    .rev-table .features { color: #888; font-size: 13px; line-height: 1.6; }
+
+    /* Cover */
+    #s1 {
+      background: radial-gradient(ellipse at 65% 40%, #1a1230 0%, #0f0f13 60%);
+      justify-content: center;
+    }
+    #s1 .cover-logo {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 40px;
+    }
+    #s1 .cover-logo-text {
+      font-size: 42px; font-weight: 900; letter-spacing: -1px;
+    }
+    #s1 .cover-logo-text em {
+      font-style: normal;
+      background: linear-gradient(135deg, #7c6ded, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    #s1 h1 {
+      font-size: clamp(38px, 5.5vw, 68px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -1px;
+      margin-bottom: 24px;
+    }
+    #s1 .tagline { font-size: clamp(16px, 1.8vw, 22px); color: #888; max-width: 600px; line-height: 1.6; }
+    #s1 .presented { position: absolute; bottom: 36px; left: 80px; font-size: 13px; color: #444; }
+
+    /* Closing */
+    #s10 { background: radial-gradient(ellipse at 35% 60%, #1a0f2e 0%, #0f0f13 60%); }
+  </style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- Shared logo snippet (used in js) -->
+  <template id="logo-tpl">
+    <div class="slide-logo">
+      <svg viewBox="0 0 680 250" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7c6ded"/>
+            <stop offset="100%" stop-color="#f472b6"/>
+          </linearGradient>
+        </defs>
+        <circle cx="190" cy="120" r="90" fill="none" stroke="#2a2a38" stroke-width="7"/>
+        <circle cx="190" cy="120" r="90" fill="none" stroke="url(#lg)" stroke-width="7" stroke-linecap="round" stroke-dasharray="362 452" stroke-dashoffset="113"/>
+        <circle cx="190" cy="120" r="76" fill="#16161f"/>
+        <rect x="165" y="113" width="50" height="34" rx="6" fill="none" stroke="url(#lg)" stroke-width="2"/>
+        <rect x="178" y="106" width="24" height="10" rx="4" fill="none" stroke="url(#lg)" stroke-width="2"/>
+      </svg>
+      <span>appli<em>.io</em></span>
+    </div>
+    <div class="slide-bar"></div>
+  </template>
+
+  <!-- ══════════════════════════════════════════
+       1 · COVER
+  ══════════════════════════════════════════ -->
+  <div class="slide active" id="s1">
+    <div class="cover-logo">
+      <svg width="52" height="52" viewBox="0 0 680 250" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="lg-cover" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7c6ded"/>
+            <stop offset="100%" stop-color="#f472b6"/>
+          </linearGradient>
+        </defs>
+        <circle cx="190" cy="120" r="90" fill="none" stroke="#2a2a38" stroke-width="7"/>
+        <circle cx="190" cy="120" r="90" fill="none" stroke="url(#lg-cover)" stroke-width="7" stroke-linecap="round" stroke-dasharray="362 452" stroke-dashoffset="113"/>
+        <circle cx="190" cy="120" r="76" fill="#16161f"/>
+        <rect x="165" y="113" width="50" height="34" rx="6" fill="none" stroke="url(#lg-cover)" stroke-width="2"/>
+        <rect x="178" y="106" width="24" height="10" rx="4" fill="none" stroke="url(#lg-cover)" stroke-width="2"/>
+      </svg>
+      <span class="cover-logo-text">appli<em>.io</em></span>
+    </div>
+    <h1>Your job search,<br><span class="grad">on autopilot.</span></h1>
+    <p class="tagline">A Chrome extension that reads your Gmail, classifies every application with AI, and keeps your entire job hunt organized — automatically.</p>
+    <div class="presented">Presented to Transcend UW · 2026</div>
+    <div class="slide-num">1 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       2 · WHY NOW
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s2">
+    <div class="eyebrow">Why Now</div>
+    <h2>The job market has never been<br>more <span class="grad">overwhelming.</span></h2>
+    <div class="cards cols-3" style="margin-top:20px;">
+      <div class="card">
+        <div class="card-icon">📈</div>
+        <h3>Application volume is exploding</h3>
+        <p>Job seekers now send 100+ applications per cycle just to compete. The volume is too high to manage manually.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤖</div>
+        <h3>AI is now cheap enough</h3>
+        <p>LLMs like DeepSeek V3 can classify emails for fractions of a cent. The infrastructure to build this didn't exist two years ago.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📬</div>
+        <h3>Gmail is universal</h3>
+        <p>Nearly every job seeker uses Gmail. It holds the full paper trail of their job search — we just need to read it.</p>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:24px;">The tools people use today — spreadsheets and platform-specific trackers — were built for a different era. Appli.io is built for now.</p>
+    <div class="slide-num">2 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       3 · PROBLEM
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s3">
+    <div class="eyebrow">Problem Statement</div>
+    <h2>Job seekers are flying blind<br>through their own <span class="grad">job search.</span></h2>
+    <div class="quote">"I applied to 80 companies last month. I honestly can't remember half of them — or whether any of them wrote back."</div>
+    <div class="cards cols-3">
+      <div class="card">
+        <div class="card-icon">🗂️</div>
+        <h3>Spreadsheets don't scale</h3>
+        <p>Manual entry takes hours. People stop updating them after the first week. You can't track what you don't log.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <h3>Platform trackers are silos</h3>
+        <p>Jobright and Teal only see applications submitted on their platform — a fraction of where people actually apply.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔕</div>
+        <h3>Missed opportunities</h3>
+        <p>A rejection slips by unread. A follow-up window closes. An interview invite gets buried under newsletters.</p>
+      </div>
+    </div>
+    <div class="slide-num">3 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       4 · SOLUTION
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s4">
+    <div class="eyebrow">Solution</div>
+    <h2>One extension. Every application.<br><span class="grad">Zero manual work.</span></h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Connect Gmail</h3>
+        <p>OAuth2 read-only access. Pull up to a year of application emails in one click.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>AI classifies</h3>
+        <p>A local LLM reads each email and assigns Applied, Interview, Offer, or Rejected — with a reason.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Dashboard fills in</h3>
+        <p>Company, role, status, and date populate automatically. Filterable, sortable, always current.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Go deeper</h3>
+        <p>Resume diagnostic, interview simulator, company deep scan, and AI follow-up generator — all built in.</p>
+      </div>
+    </div>
+    <div class="tags">
+      <span class="tag">Auto email sync</span>
+      <span class="tag">AI classification</span>
+      <span class="tag">Resume diagnostic</span>
+      <span class="tag">Interview simulator</span>
+      <span class="tag">Company deep scan</span>
+      <span class="tag">Follow-up generator</span>
+      <span class="tag">Auto-log on Greenhouse / Lever / Workday / Ashby</span>
+    </div>
+    <div class="slide-num">4 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       5 · DEMO
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s5">
+    <div class="eyebrow">Demo</div>
+    <h2>See it in action.</h2>
+    <div class="demo-frame">
+      <div class="demo-icon">🎬</div>
+      <strong style="color:#666; font-size:16px;">Demo Video / Live Walkthrough</strong>
+      <p>Replace this block with a screen recording, embedded video, or live product demo.<br><br>
+      Show: Gmail sync → Dashboard populating → Resume Diagnostic → Interview Simulator → Deep Scan</p>
+    </div>
+    <div class="slide-num">5 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       6 · REVENUE MODEL
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s6">
+    <div class="eyebrow">Revenue Model</div>
+    <h2>Freemium to <span class="grad">premium.</span></h2>
+    <table class="rev-table">
+      <thead>
+        <tr>
+          <th>Tier</th>
+          <th>Price</th>
+          <th>What's included</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tier">Free</td>
+          <td class="price">$0</td>
+          <td class="features">Gmail sync, dashboard, up to 30 days of history, auto-log on job boards</td>
+        </tr>
+        <tr>
+          <td class="tier">Pro</td>
+          <td class="price">$9.99 / mo</td>
+          <td class="features">Full year history, resume diagnostic, interview simulator, company deep scan, AI follow-up generator, unlimited LLM classifications</td>
+        </tr>
+        <tr>
+          <td class="tier">Annual</td>
+          <td class="price">$79 / yr</td>
+          <td class="features">Everything in Pro — 34% savings. Targets serious job seekers in active search cycles.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="sub" style="margin-top:20px;">1,000 paying users at $9.99/mo = <strong style="color:#a78bfa;">$9,990 MRR</strong>. Low churn expected — users stay active for the full duration of their job search.</p>
+    <div class="slide-num">6 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       7 · TRACTION
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s7">
+    <div class="eyebrow">Traction</div>
+    <h2>We already <span class="grad">built it.</span></h2>
+    <div class="cards cols-4" style="margin-top:20px;">
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <h3>Working MVP</h3>
+        <p>Full Chrome extension live with Gmail sync, AI classification, and dashboard.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧠</div>
+        <h3>AI pipeline live</h3>
+        <p>Two-stage classifier: fast keyword pass + DeepSeek V3 LLM with retry, cache, and queue logic.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📄</div>
+        <h3>Resume diagnostic</h3>
+        <p>Accepts PDF, DOCX, TXT. Scores every bullet 1–10 with AI-rewritten alternatives.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎤</div>
+        <h3>Interview simulator</h3>
+        <p>Live AI interviewer with speech recognition, text-to-speech, webcam input, and filler word tracking.</p>
+      </div>
+    </div>
+    <div class="stats" style="margin-top:28px;">
+      <div>
+        <div class="stat-num">4</div>
+        <div class="stat-label">job boards auto-logged (Greenhouse, Lever, Workday, Ashby)</div>
+      </div>
+      <div>
+        <div class="stat-num">5</div>
+        <div class="stat-label">AI-powered features shipped</div>
+      </div>
+      <div>
+        <div class="stat-num">$0</div>
+        <div class="stat-label">infrastructure cost in MVP phase</div>
+      </div>
+    </div>
+    <div class="slide-num">7 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       8 · MARKET (TAM / SAM / SOM)
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s8">
+    <div class="eyebrow">Market Opportunity</div>
+    <h2>A massive market with no<br><span class="grad">dominant solution.</span></h2>
+    <div style="display:flex; align-items:center; gap:56px; margin-top:24px;">
+
+      <!-- Circles side by side, aligned to bottom -->
+      <div class="tam-wrap">
+        <div class="tam-circle big">
+          <div class="label">TAM</div>
+          <div class="val" style="color:#7c6ded;">$28B</div>
+          <div class="desc">Global HR &amp; job seeker tools market</div>
+        </div>
+        <div class="tam-circle mid">
+          <div class="label">SAM</div>
+          <div class="val" style="color:#a855f7;">$4.2B</div>
+          <div class="desc">US Gmail + Chrome users actively job hunting</div>
+        </div>
+        <div class="tam-circle small">
+          <div class="label">SOM</div>
+          <div class="val" style="color:#f472b6;">$180M</div>
+          <div class="desc">College students &amp; recent grads, year 1</div>
+        </div>
+      </div>
+
+      <!-- Right side text -->
+      <div style="max-width:380px; flex-shrink:0;">
+        <p style="color:#ccc; font-size:15px; line-height:1.75; margin-bottom:20px;">LinkedIn Premium generates <strong style="color:#fff;">$1.7B/yr</strong> from job seekers alone — and it doesn't track a single application.</p>
+        <p style="color:#999; font-size:14px; line-height:1.75; margin-bottom:20px;">There is no dominant AI-native application tracker in the Chrome Store today. The window is wide open.</p>
+        <p style="color:#555; font-size:12px;">Year 1 target: college students &amp; recent grads (SOM)</p>
+      </div>
+
+    </div>
+    <div class="slide-num">8 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       9 · TEAM
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s9">
+    <div class="eyebrow">The Team</div>
+    <h2>Built by people who lived<br><span class="grad">the problem.</span></h2>
+    <div class="team-cards">
+
+      <!-- TEAM MEMBER 1 — edit below -->
+      <div class="team-card">
+        <div class="team-avatar">
+          <!-- Replace 👤 with: <img src="your-photo.jpg" alt="Name"> -->
+          👤
+        </div>
+        <div class="team-name">Your Name Here</div>
+        <div class="team-role">Co-Founder · Full-Stack Engineering</div>
+        <div class="team-bio">
+          CS major at [University]. [Add 1–2 sentences about your background, what you built on this project, and why you're the right person to build it.]
+        </div>
+        <div class="team-links">
+          <a class="team-link" href="#">LinkedIn</a>
+          <a class="team-link" href="#">GitHub</a>
+        </div>
+      </div>
+
+      <!-- TEAM MEMBER 2 — edit below -->
+      <div class="team-card">
+        <div class="team-avatar">
+          <!-- Replace 👤 with: <img src="your-photo.jpg" alt="Name"> -->
+          👤
+        </div>
+        <div class="team-name">Your Name Here</div>
+        <div class="team-role">Co-Founder · AI & Product</div>
+        <div class="team-bio">
+          CS major at [University]. [Add 1–2 sentences about your background, what you built on this project, and why you're the right person to build it.]
+        </div>
+        <div class="team-links">
+          <a class="team-link" href="#">LinkedIn</a>
+          <a class="team-link" href="#">GitHub</a>
+        </div>
+      </div>
+
+    </div>
+    <p class="sub" style="margin-top:20px;">Both founders went through the exact grind Appli.io solves — hundreds of applications, lost in their own inbox. They built the tool they wished existed.</p>
+    <div class="slide-num">9 / 10</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       10 · ROADMAP
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="s10">
+    <div class="eyebrow">Roadmap</div>
+    <h2>Where we're <span class="grad">going.</span></h2>
+    <div class="roadmap">
+      <div class="rm-row">
+        <div class="rm-dot"></div>
+        <div class="rm-quarter">Q2 2026</div>
+        <div class="rm-text">
+          <h4>Chrome Store launch + beta users</h4>
+          <p>Public release, onboard first 500 users, gather feedback on classification accuracy and UX.</p>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-dot"></div>
+        <div class="rm-quarter">Q3 2026</div>
+        <div class="rm-text">
+          <h4>Pro tier + monetization live</h4>
+          <p>Stripe integration, Pro unlock for resume diagnostic, interview simulator, and deep scan. First revenue.</p>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-dot"></div>
+        <div class="rm-quarter">Q4 2026</div>
+        <div class="rm-text">
+          <h4>University career center partnerships</h4>
+          <p>B2B licensing to career centers. Institutions pay per-student to give their grads an edge.</p>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-dot"></div>
+        <div class="rm-quarter">2027</div>
+        <div class="rm-text">
+          <h4>Outlook + mobile companion</h4>
+          <p>Expand beyond Gmail. Mobile app for on-the-go status checks and interview prep on the way to an interview.</p>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:28px;">
+      <span class="badge fill">Install the Extension</span>
+      <span class="badge ghost">Talk to Us</span>
+    </div>
+    <div class="slide-num">10 / 10</div>
+  </div>
+
+</div>
+
+<!-- Nav -->
+<div class="nav">
+  <button id="prev">← Prev</button>
+  <button id="next">Next →</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const logoTpl = document.getElementById('logo-tpl');
+  let current = 0;
+
+  // Inject logo into every slide except the cover
+  slides.forEach((slide, i) => {
+    if (i === 0) return;
+    const clone = logoTpl.content.cloneNode(true);
+    slide.insertBefore(clone, slide.firstChild);
+  });
+
+  function show(n) {
+    slides[current].classList.remove('active');
+    current = (n + slides.length) % slides.length;
+    slides[current].classList.add('active');
+  }
+
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') show(current + 1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   show(current - 1);
+  });
+</script>
+
+</body>
+</html>

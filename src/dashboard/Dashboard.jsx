@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import Stats from './components/Stats';
 import JobTable from './components/JobTable';
 import AddJobForm from './components/AddJobForm';
@@ -7,285 +6,347 @@ import InterviewSimulator from './components/InterviewSimulator';
 import DeepScan from './components/DeepScan';
 import ResumeDiagnostic from './components/ResumeDiagnostic';
 
-
-function Dashboard() {
-    const [jobs, setJobs] = useState([]);
-    const [activeFilter, setActiveFilter] = useState(null);
-    const [showAddForm, setShowAddForm] = useState(false);
-    const [showResumeDiagnostic, setShowResumeDiagnostic] = useState(false);
-    const [hoveredStatus, setHoveredStatus] = useState(null);
-    const [simulatingJob, setSimulatingJob] = useState(null);
-    const [simulationMode, setSimulationMode] = useState('interview');
-    const [scanningJob, setScanningJob] = useState(null);
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [syncStatus, setSyncStatus] = useState("");
-    const [syncRange, setSyncRange] = useState("1m");
-
-    const statusColors = {
-        'Applied': '#60a5fa',
-        'Interview': '#fbbf24',
-        'Offer': '#00ff9d',
-        'Rejected': '#ff0055',
-        null: '#00f2ff'
-    };
-
-    const currentGlow = statusColors[hoveredStatus] || statusColors[null];
-
-    useEffect(() => {
-        loadJobs();
-    }, []);
-
-    const loadJobs = () => {
-        chrome.storage.local.get("jobs", (result) => {
-            setJobs(result.jobs || []);
-        });
-    };
-
-    const saveJobs = (updatedJobs) => {
-        chrome.storage.local.set({ jobs: updatedJobs }, () => {
-            setJobs(updatedJobs);
-        });
-    };
-
-    const handleFilterClick = (status) => {
-        setActiveFilter(activeFilter === status ? null : status);
-    };
-
-    const handleUpdateJob = (jobId, updates) => {
-        const updatedJobs = jobs.map(job =>
-            job.id === jobId ? { ...job, ...updates, lastUpdated: new Date().toISOString() } : job
-        );
-        saveJobs(updatedJobs);
-    };
-
-    const handleDeleteJob = (jobId) => {
-        if (confirm('Are you sure you want to delete this job?')) {
-            const updatedJobs = jobs.filter(job => job.id !== jobId);
-            saveJobs(updatedJobs);
-        }
-    };
-
-    const handleAddJob = (newJob) => {
-        const updatedJobs = [...jobs, newJob];
-        saveJobs(updatedJobs);
-        setShowAddForm(false);
-    };
-
-    const handleSimulateRequest = (job, mode = 'interview') => {
-        setSimulationMode(mode);
-        setSimulatingJob(job);
-    };
-
-    const handleGmailSync = () => {
-        setIsSyncing(true);
-        setSyncStatus("GMAIL_SYNC_ACTIVE...");
-
-        chrome.runtime.sendMessage({ action: "sync", range: syncRange }, (response) => {
-            setSyncStatus(response || "SYNC_COMPLETE");
-            setIsSyncing(false);
-            loadJobs();
-            setTimeout(() => setSyncStatus(""), 5000);
-        });
-    };
-
-    useEffect(() => {
-        const listener = (changes, namespace) => {
-            if (namespace === 'local' && changes.jobs) {
-                loadJobs();
-            }
-        };
-
-        chrome.storage.onChanged.addListener(listener);
-        return () => chrome.storage.onChanged.removeListener(listener);
-    }, []);
-
-    // Starfield generator with twinkling and drift support
-    const stars = useMemo(() => {
-        const generateStars = (count) => {
-            let stars = "";
-            for (let i = 0; i < count; i++) {
-                stars += `${Math.random() * 2000}px ${Math.random() * 2000}px rgba(255, 255, 255, ${Math.random()}), `;
-            }
-            return stars.slice(0, -2);
-        };
-        return {
-            small: generateStars(400),
-            medium: generateStars(150),
-            large: generateStars(50)
-        };
-    }, []);
-
-    return (
-        <div style={{ ...styles.container, background: '#020308', transition: 'background 0.8s ease' }}>
-            {/* Galaxy Layers with Parallax Drift */}
-            <div style={{
-                ...styles.starLayer,
-                boxShadow: stars.small,
-                animation: 'twinkle 4s infinite linear, drift 100s infinite linear'
-            }}></div>
-            <div style={{
-                ...styles.starLayer,
-                boxShadow: stars.medium,
-                animation: 'twinkle 6s infinite linear, drift 150s infinite linear',
-                opacity: 0.6
-            }}></div>
-            <div style={{
-                ...styles.starLayer,
-                boxShadow: stars.large,
-                animation: 'twinkle 3s infinite linear, drift 200s infinite linear',
-                opacity: 0.4
-            }}></div>
-
-            {/* Shooting Stars */}
-            <div className="shooting-star" style={{ top: '10%', left: '10%', animationDelay: '0s' }}></div>
-            <div className="shooting-star" style={{ top: '30%', left: '50%', animationDelay: '4s' }}></div>
-            <div className="shooting-star" style={{ top: '70%', left: '20%', animationDelay: '7s' }}></div>
-
-            {/* Nebula Clouds */}
-            <div style={{
-                position: 'fixed',
-                top: '10%',
-                left: '20%',
-                width: '600px',
-                height: '600px',
-                background: `radial-gradient(circle, ${currentGlow}20 0%, transparent 70%)`,
-                animation: 'nebulaPulse 8s infinite ease-in-out',
-                zIndex: 0,
-                pointerEvents: 'none',
-                transition: 'all 0.8s ease'
-            }}></div>
-            <div style={{
-                position: 'fixed',
-                bottom: '10%',
-                right: '10%',
-                width: '800px',
-                height: '800px',
-                background: `radial-gradient(circle, ${currentGlow}15 0%, transparent 70%)`,
-                animation: 'nebulaPulse 12s infinite ease-in-out',
-                zIndex: 0,
-                pointerEvents: 'none',
-                transition: 'all 0.8s ease'
-            }}></div>
-
-            <div style={{ ...styles.gridOverlay, background: `linear-gradient(${currentGlow}05 1px, transparent 1px), linear-gradient(90deg, ${currentGlow}05 1px, transparent 1px)`, transition: 'all 0.8s ease' }}></div>
-            <div style={styles.scanline}></div>
-
-            <header style={{ ...styles.header, border: `1px solid ${currentGlow}40`, boxShadow: `0 0 30px ${currentGlow}15`, transition: 'all 0.6s ease' }}>
-                <div style={styles.titleContainer}>
-                    <h1 style={{ ...styles.title, textShadow: `0 0 15px ${currentGlow}50` }}>APPLI.IO <span style={styles.version}>v1.0</span></h1>
-                    <div style={{ ...styles.statusIndicator, color: currentGlow }}>
-                        <div style={{ ...styles.pulse, backgroundColor: isSyncing ? '#00f2ff' : currentGlow, boxShadow: `0 0 10px ${isSyncing ? '#00f2ff' : currentGlow}` }}></div>
-                        {isSyncing ? 'SYNC_IN_PROGRESS' : (hoveredStatus ? `DATA_FOCUS: ${hoveredStatus.toUpperCase()}` : (syncStatus || 'SYSTEM_READY'))}
-                    </div>
-                </div>
-                <div style={styles.headerButtons}>
-                    <button
-                        onClick={() => setShowResumeDiagnostic(true)}
-                        style={{ ...styles.diagnosticBtn, color: '#00f2ff', borderColor: '#00f2ff40', background: 'rgba(0, 242, 255, 0.05)' }}
-                        className="glitch-hover"
-                    >
-                        RESUME_DIAGNOSTIC
-                    </button>
-                    <button
-                        onClick={() => setShowAddForm(true)}
-                        style={{ ...styles.addBtn, color: currentGlow, borderColor: currentGlow, boxShadow: `0 0 15px ${currentGlow}30` }}
-                        className="glitch-hover"
-                    >
-                        <span>+ ADD_JOB</span>
-                    </button>
-                    <div style={styles.syncContainer}>
-                        <select
-                            value={syncRange}
-                            onChange={(e) => setSyncRange(e.target.value)}
-                            style={{ ...styles.rangeSelect, color: currentGlow, borderColor: `${currentGlow}40` }}
-                        >
-                            <option value="1m">30D</option>
-                            <option value="3m">90D</option>
-                            <option value="6m">180D</option>
-                            <option value="1y">1Y</option>
-                        </select>
-                        <button
-                            onClick={handleGmailSync}
-                            disabled={isSyncing}
-                            style={{
-                                ...styles.refreshBtn,
-                                color: isSyncing ? '#00f2ff' : currentGlow,
-                                borderColor: isSyncing ? '#00f2ff40' : `${currentGlow}40`,
-                                background: isSyncing ? 'rgba(0, 242, 255, 0.1)' : `${currentGlow}10`,
-                                opacity: isSyncing ? 0.7 : 1,
-                                cursor: isSyncing ? 'wait' : 'pointer'
-                            }}
-                            className="glitch-hover"
-                        >
-                            {isSyncing ? "SYNCING..." : "SYNC_GMAIL"}
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <Stats
-                jobs={jobs}
-                activeFilter={activeFilter}
-                onFilterClick={handleFilterClick}
-                onHover={setHoveredStatus}
-            />
-            <JobTable
-                jobs={jobs}
-                activeFilter={activeFilter}
-                onUpdateJob={handleUpdateJob}
-                onDeleteJob={handleDeleteJob}
-                onSimulateJob={handleSimulateRequest}
-                onDeepScan={setScanningJob}
-            />
-
-            {showAddForm && (
-                <AddJobForm
-                    onAdd={handleAddJob}
-                    onCancel={() => setShowAddForm(false)}
-                />
-            )}
-
-            {simulatingJob && (
-                <InterviewSimulator
-                    job={simulatingJob}
-                    mode={simulationMode}
-                    onCancel={() => setSimulatingJob(null)}
-                />
-            )}
-
-            {scanningJob && (
-                <DeepScan
-                    job={scanningJob}
-                    onCancel={() => setScanningJob(null)}
-                />
-            )}
-
-            {showResumeDiagnostic && (
-                <ResumeDiagnostic
-                    onCancel={() => setShowResumeDiagnostic(false)}
-                />
-            )}
-        </div>
-    );
-}
-
-const styles = {
-    container: { minHeight: '100vh', padding: '40px 20px', fontFamily: '"Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', position: 'relative', overflowX: 'hidden', color: '#e0e0e0' },
-    starLayer: { position: 'fixed', top: 0, left: 0, width: '2px', height: '2px', background: 'transparent', zIndex: 0, pointerEvents: 'none', willChange: 'transform' },
-    gridOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundSize: '40px 40px', pointerEvents: 'none', zIndex: 0 },
-    scanline: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.1) 50%)', backgroundSize: '100% 4px', pointerEvents: 'none', zIndex: 1, opacity: 0.3 },
-    header: { maxWidth: '1400px', margin: '0 auto 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '25px 35px', background: 'rgba(15, 17, 34, 0.8)', backdropFilter: 'blur(15px)', borderRadius: '12px', position: 'relative', zIndex: 2 },
-    titleContainer: { display: 'flex', flexDirection: 'column', gap: '4px' },
-    title: { margin: 0, fontSize: '28px', fontWeight: '900', letterSpacing: '2px', background: 'linear-gradient(90deg, #00f2ff, #7000ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: '"Inter", sans-serif' },
-    version: { fontSize: '12px', WebkitTextFillColor: 'rgba(0, 242, 255, 0.6)', fontWeight: '600' },
-    statusIndicator: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', fontWeight: '700', letterSpacing: '1px', fontFamily: '"Roboto Mono", monospace' },
-    pulse: { width: '6px', height: '6px', borderRadius: '50%' },
-    headerButtons: { display: 'flex', gap: '15px' },
-    diagnosticBtn: { padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '13px', fontFamily: '"Roboto Mono", monospace', transition: 'all 0.3s ease', textTransform: 'uppercase', border: '1px solid #00f2ff40' },
-    addBtn: { background: 'transparent', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '13px', fontFamily: '"Roboto Mono", monospace', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', position: 'relative', overflow: 'hidden', textTransform: 'uppercase' },
-    syncContainer: { display: 'flex', gap: '8px', alignItems: 'stretch' },
-    rangeSelect: { background: 'rgba(15, 17, 34, 0.6)', padding: '0 10px', borderRadius: '8px', border: '1px solid', fontSize: '12px', fontWeight: 'bold', fontFamily: '"Roboto Mono", monospace', color: '#fff', cursor: 'pointer', outline: 'none' },
-    refreshBtn: { padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', fontFamily: '"Roboto Mono", monospace', transition: 'all 0.3s ease', textTransform: 'uppercase' }
+const BRAND = '#8e5be8';
+const LOGO_PURPLE = '#8e5be8';
+const COLORS = {
+  bg: '#f5f5f8',
+  panel: '#ffffff',
+  panelSoft: '#f2f0f7',
+  border: '#e1dceb',
+  text: '#17171f',
+  muted: '#666673',
+  subtle: '#898996',
 };
 
-export default Dashboard;
+const Logo = () => (
+  <div onClick={() => { window.location.href = '../home/index.html'; }} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+    <svg width={26} height={26} viewBox="100 30 180 180" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lg-dash" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#7c6ded" />
+          <stop offset="50%" stopColor="#a855f7" />
+          <stop offset="100%" stopColor="#c084fc" />
+        </linearGradient>
+      </defs>
+      <circle cx="190" cy="120" r="90" fill="none" stroke="#ddd6fe" strokeWidth="7" />
+      <circle cx="190" cy="120" r="90" fill="none" stroke="url(#lg-dash)" strokeWidth="7"
+        strokeLinecap="round" strokeDasharray="362 452" strokeDashoffset="113" />
+      <circle cx="190" cy="120" r="76" fill="#ffffff" />
+      <rect x="165" y="113" width="50" height="34" rx="6" fill="none" stroke="url(#lg-dash)" strokeWidth="2" />
+      <rect x="178" y="106" width="24" height="10" rx="4" fill="none" stroke="url(#lg-dash)" strokeWidth="2" />
+      <line x1="190" y1="113" x2="190" y2="147" stroke="url(#lg-dash)" strokeWidth="1.5" opacity="0.4" />
+    </svg>
+    <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.5px', color: '#17171f' }}>
+      appli
+      <span style={{
+        background: 'linear-gradient(135deg, #8e5be8, #d56cc7)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text'
+      }}>.io</span>
+    </span>
+  </div>
+);
+
+function Avatar({ email }) {
+  const initial = email ? email[0].toUpperCase() : '?';
+  return (
+    <div style={{
+      width: 32, height: 32, borderRadius: '50%',
+      background: `linear-gradient(135deg, ${BRAND}, #d56cc7)`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0
+    }}>{initial}</div>
+  );
+}
+
+export default function Dashboard() {
+  const [jobs, setJobs] = useState([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showResumeDiagnostic, setShowResumeDiagnostic] = useState(false);
+  const [simulatingJob, setSimulatingJob] = useState(null);
+  const [simulationMode, setSimulationMode] = useState('interview');
+  const [scanningJob, setScanningJob] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('');
+  const [syncRange, setSyncRange] = useState('1m');
+  const [userEmail, setUserEmail] = useState('');
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [activeFilter, setActiveFilter] = useState(null);
+
+  useEffect(() => {
+    // Auth check — redirect to home if not signed in
+    const token = localStorage.getItem('appli_token');
+    const email = localStorage.getItem('appli_user_email') || '';
+    if (!token) {
+      window.location.href = '../home/index.html';
+      return;
+    }
+    setIsAuthed(true);
+    setUserEmail(email);
+    loadJobs();
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthed) return;
+    const listener = (changes, ns) => {
+      if (ns === 'local' && changes.jobs) loadJobs();
+    };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }, [isAuthed]);
+
+  const loadJobs = () => {
+    chrome.storage.local.get('jobs', r => setJobs(r.jobs || []));
+  };
+
+  const saveJobs = updated => {
+    chrome.storage.local.set({ jobs: updated }, () => setJobs(updated));
+  };
+
+  const handleUpdateJob = (id, updates) => {
+    saveJobs(jobs.map(j => j.id === id ? { ...j, ...updates, lastUpdated: new Date().toISOString() } : j));
+  };
+
+  const handleDeleteJob = id => {
+    if (confirm('Remove this application?')) saveJobs(jobs.filter(j => j.id !== id));
+  };
+
+  const handleAddJob = job => {
+    saveJobs([...jobs, job]);
+    setShowAddForm(false);
+  };
+
+  const handleGmailSync = () => {
+    const runSync = () => {
+      setIsSyncing(true);
+      setSyncStatus('Syncing…');
+      chrome.runtime.sendMessage({ action: 'sync', range: syncRange }, response => {
+        if (chrome.runtime?.lastError) {
+          setSyncStatus(`Error: ${chrome.runtime.lastError.message}`);
+          setIsSyncing(false);
+          setTimeout(() => setSyncStatus(''), 5000);
+          return;
+        }
+        const msg = response || 'Sync complete';
+        setSyncStatus(msg.startsWith('Error') ? msg : 'Sync complete');
+        setIsSyncing(false);
+        loadJobs();
+        setTimeout(() => setSyncStatus(''), 4000);
+      });
+    };
+
+    const token = localStorage.getItem('appli_token');
+    if (token) {
+      runSync();
+      return;
+    }
+
+    if (!chrome.identity?.getAuthToken) {
+      setSyncStatus('Error: Google auth unavailable');
+      setTimeout(() => setSyncStatus(''), 4000);
+      return;
+    }
+
+    setSyncStatus('Authorizing Gmail…');
+    chrome.identity.getAuthToken({ interactive: true }, (freshToken) => {
+      if (!freshToken) {
+        setSyncStatus('Error: Not signed in');
+        setTimeout(() => setSyncStatus(''), 4000);
+        return;
+      }
+      localStorage.setItem('appli_token', freshToken);
+      runSync();
+    });
+  };
+
+  const handleLogout = () => {
+    if (chrome.identity?.removeCachedAuthToken) {
+      chrome.identity.removeCachedAuthToken({ token: localStorage.getItem('appli_token') }, () => {});
+    }
+    localStorage.removeItem('appli_token');
+    localStorage.removeItem('appli_user_email');
+    window.location.href = '../home/index.html';
+  };
+
+  if (!isAuthed) return null;
+
+  const isError = syncStatus.toLowerCase().startsWith('error');
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: `radial-gradient(1200px 480px at -5% -10%, #d4e2ff66 0%, transparent 65%),
+                   radial-gradient(1000px 420px at 105% 0%, #dbeeff55 0%, transparent 60%),
+                   ${COLORS.bg}`,
+      color: COLORS.text,
+      fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif"
+    }}>
+
+      {/* HEADER */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        background: 'rgba(244,247,251,0.86)', backdropFilter: 'blur(16px)',
+        borderBottom: `1px solid ${COLORS.border}`,
+        padding: '0 22px', height: 64,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <Logo />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {syncStatus && (
+            <span style={{
+              fontSize: 12, color: isError ? '#f87171' : '#10b981',
+              background: isError ? '#f8717110' : '#10b98110',
+              border: `1px solid ${isError ? '#f8717130' : '#10b98130'}`,
+              padding: '5px 10px', borderRadius: 999, marginRight: 4
+            }}>{syncStatus}</span>
+          )}
+
+          <select
+            value={syncRange}
+            onChange={e => setSyncRange(e.target.value)}
+            style={{
+              background: COLORS.panelSoft, border: `1px solid ${COLORS.border}`,
+              color: COLORS.muted, padding: '7px 11px', borderRadius: 8,
+              fontSize: 13, cursor: 'pointer', outline: 'none', fontFamily: 'inherit'
+            }}
+          >
+            <option value="1m">30 days</option>
+            <option value="3m">90 days</option>
+            <option value="6m">180 days</option>
+            <option value="1y">1 year</option>
+          </select>
+
+          <button onClick={() => setShowResumeDiagnostic(true)} style={ghostBtn}>
+            Resume Lab
+          </button>
+
+          <button onClick={() => setShowAddForm(true)} style={primaryBtn}>
+            Add job
+          </button>
+
+          <button onClick={handleGmailSync} disabled={isSyncing} style={{
+            background: isSyncing ? '#c8b4eb' : BRAND,
+            border: 'none', color: '#fff',
+            padding: '8px 16px', borderRadius: 8,
+            fontSize: 13, fontWeight: 600, cursor: isSyncing ? 'not-allowed' : 'pointer',
+            fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
+            opacity: isSyncing ? 0.7 : 1, transition: 'all 0.15s'
+          }}>
+            {isSyncing ? (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray="40 20" />
+                </svg>
+                Syncing…
+              </>
+            ) : 'Sync Gmail'}
+          </button>
+
+          {/* User menu */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowUserMenu(v => !v)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              <Avatar email={userEmail} />
+            </button>
+            {showUserMenu && (
+              <>
+                <div onClick={() => setShowUserMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <div style={{
+                  position: 'absolute', top: 42, right: 0, zIndex: 50,
+                  background: COLORS.panelSoft, border: `1px solid ${COLORS.border}`,
+                  borderRadius: 12, padding: 8, minWidth: 220,
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.4)'
+                }}>
+                  {userEmail && (
+                    <div style={{ padding: '8px 12px', marginBottom: 4 }}>
+                      <div style={{ fontSize: 11, color: COLORS.subtle, marginBottom: 2 }}>Signed in as</div>
+                      <div style={{ fontSize: 13, color: COLORS.muted, fontWeight: 500, wordBreak: 'break-all' }}>{userEmail}</div>
+                    </div>
+                  )}
+                  <div style={{ height: 1, background: COLORS.border, margin: '4px 0' }} />
+                  <button onClick={handleLogout} style={{
+                    width: '100%', textAlign: 'left', background: 'transparent',
+                    border: 'none', color: '#f87171', padding: '8px 12px',
+                    borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit'
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8717110'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >Sign out</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main style={{
+        maxWidth: 1320,
+        margin: '0 auto',
+        padding: '24px 22px 80px'
+      }}>
+        <div style={{
+          background: COLORS.panel,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 16,
+          padding: '18px 20px',
+          marginBottom: 14
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div>
+              <h1 style={{ fontSize: 22, margin: 0 }}>Application Command Center</h1>
+              <p style={{ fontSize: 13, color: COLORS.subtle, margin: '4px 0 0' }}>
+                Clean pipeline tracking with AI support tools.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button style={ghostBtn} onClick={() => setShowResumeDiagnostic(true)}>Resume diagnostic</button>
+              <button style={primaryBtn} onClick={() => setShowAddForm(true)}>Add application</button>
+            </div>
+          </div>
+        </div>
+
+        <Stats
+          jobs={jobs}
+          activeFilter={activeFilter}
+          onFilterClick={s => setActiveFilter(activeFilter === s ? null : s)}
+        />
+        <JobTable
+          jobs={jobs}
+          activeFilter={activeFilter}
+          onUpdateJob={handleUpdateJob}
+          onDeleteJob={handleDeleteJob}
+          onSimulateJob={(job, mode) => { setSimulationMode(mode); setSimulatingJob(job); }}
+          onDeepScan={setScanningJob}
+        />
+      </main>
+
+      {showAddForm && <AddJobForm onAdd={handleAddJob} onCancel={() => setShowAddForm(false)} />}
+      {simulatingJob && <InterviewSimulator job={simulatingJob} mode={simulationMode} onCancel={() => setSimulatingJob(null)} />}
+      {scanningJob && <DeepScan job={scanningJob} onCancel={() => setScanningJob(null)} />}
+      {showResumeDiagnostic && <ResumeDiagnostic onCancel={() => setShowResumeDiagnostic(false)} />}
+    </div>
+  );
+}
+
+const ghostBtn = {
+  background: '#ffffff', border: '1px solid #e1dceb',
+  color: '#5e5470', padding: '8px 14px', borderRadius: 8,
+  fontSize: 13, fontWeight: 550, cursor: 'pointer', fontFamily: 'inherit',
+  transition: 'all 0.15s'
+};
+
+const primaryBtn = {
+  background: BRAND,
+  border: '1px solid #8e5be8',
+  color: '#fff',
+  padding: '8px 14px',
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 650,
+  cursor: 'pointer',
+  fontFamily: 'inherit'
+};

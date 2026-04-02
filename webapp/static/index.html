@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Appli.io — Job applications</title>
+  <style>
+    :root { --bg: #f5f5f8; --card: #fff; --border: #e1dceb; --text: #17171f; --muted: #666673; --accent: #8e5be8; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--text); min-height: 100vh; }
+    header { padding: 16px 24px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.9); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 1.25rem; margin: 0; font-weight: 800; }
+    h1 span { color: var(--accent); }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    button, .btn { background: var(--accent); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+    button.secondary { background: #6b7280; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    label { font-size: .85rem; color: var(--muted); display: block; margin-bottom: 6px; }
+    select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); margin-right: 10px; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: .75rem; text-transform: uppercase; }
+    .status { font-weight: 700; font-size: .8rem; }
+    .status.Applied { color: #2563eb; }
+    .status.Interview { color: #d97706; }
+    .status.Rejected { color: #dc2626; }
+    .status.Offer { color: #059669; }
+    #log { font-family: ui-monospace, monospace; font-size: .8rem; background: #1e1e2e; color: #cdd6f4; padding: 12px; border-radius: 8px; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+    .muted { color: var(--muted); font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>appli<span>.io</span> <span class="muted" style="font-weight:400;font-size:.85rem">web</span></h1>
+    <div id="authBar">
+      <span id="who" class="muted"></span>
+      <a id="signIn" class="btn" href="/auth/google" style="display:none">Sign in with Google</a>
+      <button type="button" id="signOut" class="secondary" style="display:none">Sign out</button>
+    </div>
+  </header>
+  <main>
+    <div class="card">
+      <p class="muted" style="margin-top:0">
+        Runs entirely in your browser + local Python. Gmail is read-only. Classification uses
+        <strong>Python rules</strong> and optionally <strong>Ollama</strong> if <code>APPLI_OLLAMA_MODEL</code> is set.
+      </p>
+      <div class="row">
+        <div>
+          <label for="range">Sync range</label>
+          <select id="range">
+            <option value="1m">Last month</option>
+            <option value="3m">Last 3 months</option>
+            <option value="6m">Last 6 months</option>
+            <option value="1y">Last year</option>
+          </select>
+        </div>
+        <button type="button" id="syncBtn" disabled>Sync Gmail</button>
+        <button type="button" id="refreshJobs" class="secondary" disabled>Refresh table</button>
+      </div>
+      <div id="log" style="display:none"></div>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1rem">Applications</h2>
+      <div id="tableWrap"></div>
+    </div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    async function api(path, opts = {}) {
+      const r = await fetch(path, { credentials: 'include', headers: { 'Content-Type': 'application/json', ...opts.headers }, ...opts });
+      if (r.status === 401) return null;
+      if (!r.ok) throw new Error(await r.text() || r.statusText);
+      return r.json();
+    }
+    async function refreshMe() {
+      const me = await api('/api/me');
+      const signIn = $('signIn');
+      const signOut = $('signOut');
+      const who = $('who');
+      const syncBtn = $('syncBtn');
+      const refreshJobs = $('refreshJobs');
+      if (!me || !me.signed_in) {
+        who.textContent = '';
+        signIn.style.display = 'inline-block';
+        signOut.style.display = 'none';
+        syncBtn.disabled = true;
+        refreshJobs.disabled = true;
+        return false;
+      }
+      who.textContent = me.email || 'Signed in';
+      signIn.style.display = 'none';
+      signOut.style.display = 'inline-block';
+      syncBtn.disabled = false;
+      refreshJobs.disabled = false;
+      return true;
+    }
+    async function loadJobs() {
+      const data = await api('/api/jobs');
+      if (!data) {
+        $('tableWrap').innerHTML = '<p class="muted">Sign in to load jobs.</p>';
+        return;
+      }
+      const jobs = data.jobs || [];
+      if (!jobs.length) {
+        $('tableWrap').innerHTML = '<p class="muted">No jobs yet. Run a Gmail sync.</p>';
+        return;
+      }
+      const rows = jobs.map(j => `
+        <tr>
+          <td><span class="status ${j.status || ''}">${j.status || '—'}</span></td>
+          <td>${escapeHtml(j.title || '—')}</td>
+          <td>${escapeHtml(j.company || '—')}</td>
+          <td>${escapeHtml((j.subject || '').slice(0, 60))}${(j.subject || '').length > 60 ? '…' : ''}</td>
+          <td class="muted">${escapeHtml((j.date || '').slice(0, 22))}</td>
+        </tr>`).join('');
+      $('tableWrap').innerHTML = `<table><thead><tr><th>Status</th><th>Role</th><th>Company</th><th>Subject</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    $('signOut').onclick = async () => {
+      await api('/api/logout', { method: 'POST', body: '{}' });
+      location.reload();
+    };
+    $('syncBtn').onclick = async () => {
+      const log = $('log');
+      log.style.display = 'block';
+      log.textContent = 'Syncing…';
+      $('syncBtn').disabled = true;
+      try {
+        const res = await api('/api/sync', {
+          method: 'POST',
+          body: JSON.stringify({ range: $('range').value })
+        });
+        log.textContent = JSON.stringify(res, null, 2);
+        await loadJobs();
+      } catch (e) {
+        log.textContent = 'Error: ' + e.message;
+      }
+      $('syncBtn').disabled = false;
+    };
+    $('refreshJobs').onclick = () => loadJobs();
+    refreshMe().then((ok) => { if (ok) loadJobs(); });
+  </script>
+</body>
+</html>

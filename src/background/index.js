@@ -48,10 +48,11 @@ async function getStoredJobs() {
 }
 
 const STATUS_PRIORITY = {
-    "Rejected": 0,
     "Applied": 1,
-    "Interview": 2,
-    "Offer": 3
+    "Assessment": 2,
+    "Interview": 3,
+    "Rejected": 4,
+    "Offer": 5
 };
 
 async function saveJob(newJob) {
