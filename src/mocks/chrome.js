@@ -87,7 +87,7 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
                 if (typeof google !== 'undefined' && google.accounts) {
                     const client = google.accounts.oauth2.initTokenClient({
                         client_id: CLIENT_ID,
-                        scope: 'https://www.googleapis.com/auth/gmail.readonly',
+                        scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.profile',
                         callback: (response) => {
                             if (response.access_token) {
                                 storeToken(response.access_token, response.expires_in);
@@ -122,16 +122,21 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
         runtime: {
             getURL: (path) => path,
             openOptionsPage: () => {
-                const apiKey = prompt("Enter your Scitely API key", "");
+                const url = prompt(
+                    "LLM base URL (OpenAI-compatible /v1; e.g. pytorch_chat_server or Ollama)\nLeave empty to cancel.",
+                    "http://127.0.0.1:8000"
+                );
+                if (url === null || !String(url).trim()) return;
+                const apiKey = prompt(
+                    "Optional Bearer API key — only if your server requires it.\nLeave empty for local models (recommended).",
+                    ""
+                );
                 if (apiKey === null) return;
-                const url = prompt("Enter your LLM base URL\n\nDefault: https://api.scitely.com/v1", "https://api.scitely.com/v1");
-                if (url !== null) {
-                    window.chrome.storage.sync.set({
-                        ollamaUrl: url.trim(),
-                        ollamaModel: 'deepseek-v3.2',
-                        llmApiKey: apiKey.trim()
-                    }, () => window.location.reload());
-                }
+                window.chrome.storage.sync.set({
+                    ollamaUrl: url.trim(),
+                    ollamaModel: "Qwen/Qwen2.5-1.5B-Instruct",
+                    llmApiKey: String(apiKey).trim()
+                }, () => window.location.reload());
             },
             onMessage: { addListener: () => {} },
             sendMessage: (msg, callback) => {
@@ -186,7 +191,7 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
         }
     } catch { /* ignore */ }
 
-    // Vite dev: scitely.com without an API key always fails — point chat at local proxy instead.
+    // Vite dev: migrate old cloud URLs without a key to the local /appli-llm proxy.
     try {
         if (
             typeof window !== 'undefined' &&

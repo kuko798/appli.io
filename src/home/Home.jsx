@@ -73,6 +73,8 @@ function handleSignIn() {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => r.json()).then(info => {
       if (info.email) localStorage.setItem('appli_user_email', info.email);
+      if (info.picture) localStorage.setItem('appli_user_picture', info.picture);
+      else localStorage.removeItem('appli_user_picture');
     }).catch(() => {}).finally(() => {
       window.location.href = '../dashboard/index.html';
     });
@@ -326,7 +328,7 @@ export default function Home() {
               </div>
               <div style={{ marginTop: 6, color: '#6e5a8e', fontSize: 13 }}>{proSubtext}</div>
               <div style={{ marginTop: 14, display: 'grid', gap: 7 }}>
-                {['Everything in Free', 'Resume Diagnostic AI', 'Interview Simulator', 'Company Deep Scan', 'AI follow-up generation'].map(item => (
+                {['Everything in Free', 'Resume optimizer & compare', 'Interview Simulator', 'Company Deep Scan', 'AI follow-up generation'].map(item => (
                   <div key={item} style={{ fontSize: 13, color: '#5c4b75' }}>• {item}</div>
                 ))}
               </div>

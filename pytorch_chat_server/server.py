@@ -9,6 +9,8 @@ Env:
   APPLI_PYTORCH_PORT    Port (default: 8000)
   APPLI_PYTORCH_API_KEY If set, require Authorization: Bearer <key>
   HF_TOKEN              Optional, for gated models
+  APPLI_PYTORCH_SDPA    1 (default) use PyTorch SDPA attention when supported; 0 to disable
+  APPLI_PYTORCH_MAX_INPUT_TOKENS  Max prompt tokens (default 8192); longer prompts are tail-truncated
 """
 
 from __future__ import annotations
@@ -60,7 +62,19 @@ def load_model():
     kwargs = {"torch_dtype": dtype}
     if torch.cuda.is_available():
         kwargs["device_map"] = "auto"
-    m = AutoModelForCausalLM.from_pretrained(MODEL_ID, **kwargs)
+    _sdpa_raw = (os.environ.get("APPLI_PYTORCH_SDPA") or "1").strip().lower()
+    sdpa = _sdpa_raw not in ("0", "false", "no", "off")
+    load_kw = dict(kwargs)
+    if sdpa:
+        load_kw["attn_implementation"] = "sdpa"
+    try:
+        m = AutoModelForCausalLM.from_pretrained(MODEL_ID, **load_kw)
+    except (TypeError, ValueError, OSError) as e:
+        if "attn_implementation" in load_kw:
+            log.warning("SDPA load failed (%s); retrying default attention.", e)
+            m = AutoModelForCausalLM.from_pretrained(MODEL_ID, **kwargs)
+        else:
+            raise
     if not torch.cuda.is_available():
         m = m.to("cpu")
     m.eval()
@@ -146,9 +160,27 @@ def _generate_blocking(body: ChatCompletionBody) -> str:
     except Exception as e:
         raise ValueError(f"Chat template error: {e}") from e
 
-    inputs = _tokenizer(prompt, return_tensors="pt")
-    inputs = {k: v.to(_model.device) for k, v in inputs.items()}
-    max_new = min(body.max_tokens, 8192)
+    raw = _tokenizer(prompt, return_tensors="pt")
+    max_in = int(os.environ.get("APPLI_PYTORCH_MAX_INPUT_TOKENS", "8192"))
+    input_ids = raw["input_ids"]
+    attn = raw.get("attention_mask")
+    if input_ids.shape[1] > max_in:
+        log.warning("Truncating prompt from %s to %s tokens", input_ids.shape[1], max_in)
+        input_ids = input_ids[:, -max_in:]
+        if attn is not None:
+            attn = attn[:, -max_in:]
+    inputs = {"input_ids": input_ids.to(_model.device)}
+    if attn is not None:
+        inputs["attention_mask"] = attn.to(_model.device)
+
+    in_len = inputs["input_ids"].shape[1]
+    max_pos = int(getattr(_model.config, "max_position_embeddings", 32768) or 32768)
+    room = max_pos - in_len - 8
+    if room < 32:
+        raise ValueError(
+            f"Prompt too long ({in_len} tokens, max context ~{max_pos}). Shorten the resume or raise APPLI_PYTORCH_MAX_INPUT_TOKENS."
+        )
+    max_new = min(int(body.max_tokens), 8192, room)
 
     gen_kwargs = {
         "max_new_tokens": max_new,
@@ -162,7 +194,16 @@ def _generate_blocking(body: ChatCompletionBody) -> str:
 
     with _model_lock:
         with torch.inference_mode():
-            out = _model.generate(**inputs, **gen_kwargs)
+            try:
+                out = _model.generate(**inputs, **gen_kwargs)
+            except RuntimeError as e:
+                msg = str(e).lower()
+                if "out of memory" in msg or "mps backend" in msg:
+                    log.error("Generation OOM: %s", e)
+                    raise RuntimeError(
+                        "Model ran out of memory — try a shorter resume, lower max_tokens in the client, or use GPU."
+                    ) from e
+                raise
 
     # Strip prompt tokens
     in_len = inputs["input_ids"].shape[1]

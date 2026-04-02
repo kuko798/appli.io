@@ -19,7 +19,7 @@ export function getCompanyIntelBaseUrl() {
     return "http://127.0.0.1:8780";
 }
 
-export async function fetchCompanyIntel({ company, title, temperature = 0.5 }) {
+export async function fetchCompanyIntel({ company, title, temperature = 0.5, fast = true }) {
     const base = getCompanyIntelBaseUrl();
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -31,7 +31,8 @@ export async function fetchCompanyIntel({ company, title, temperature = 0.5 }) {
             body: JSON.stringify({
                 company: company || "",
                 title: title || "a candidate",
-                temperature
+                temperature,
+                fast
             }),
             signal: ctrl.signal
         });

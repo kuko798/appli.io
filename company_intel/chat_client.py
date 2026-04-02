@@ -17,8 +17,8 @@ import requests
 DEFAULT_BASE = os.environ.get("APPLI_INTEL_CHAT_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 DEFAULT_MODEL = os.environ.get("APPLI_INTEL_CHAT_MODEL", "Qwen/Qwen2.5-1.5B-Instruct")
 API_KEY = os.environ.get("APPLI_INTEL_CHAT_API_KEY", "").strip()
-DEFAULT_MAX_TOKENS = int(os.environ.get("APPLI_INTEL_MAX_TOKENS", "560"))
-DEFAULT_TIMEOUT_SEC = int(os.environ.get("APPLI_INTEL_CHAT_TIMEOUT_SEC", "360"))
+DEFAULT_MAX_TOKENS = int(os.environ.get("APPLI_INTEL_MAX_TOKENS", "640"))
+DEFAULT_TIMEOUT_SEC = int(os.environ.get("APPLI_INTEL_CHAT_TIMEOUT_SEC", "300"))
 
 
 def _completions_url(base: str) -> str:

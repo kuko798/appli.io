@@ -8,8 +8,10 @@ Env:
   APPLI_INTEL_CHAT_BASE_URL (default http://127.0.0.1:8000)
   APPLI_INTEL_CHAT_MODEL (default Qwen/Qwen2.5-1.5B-Instruct)
   APPLI_INTEL_CHAT_API_KEY (optional)
-  APPLI_INTEL_MAX_TOKENS (default 560), APPLI_INTEL_CHAT_TIMEOUT_SEC (default 360)
+  APPLI_INTEL_MAX_TOKENS (default 640), APPLI_INTEL_MAX_TOKENS_FAST (default 440)
+  APPLI_INTEL_CHAT_TIMEOUT_SEC (default 300)
   APPLI_INTEL_SEARCH_RESULTS (default 3), APPLI_INTEL_CONTEXT_CHARS (default 3200)
+  APPLI_INTEL_DDGS_BACKEND (default duckduckgo), APPLI_INTEL_DDGS_TIMEOUT_SEC (default 12)
 """
 
 from __future__ import annotations
@@ -39,6 +41,10 @@ class CompanyIntelBody(BaseModel):
     company: str | None = Field(default=None, description="Employer name")
     title: str | None = Field(default=None, description="Role / job title")
     temperature: float = 0.5
+    fast: bool = Field(
+        default=True,
+        description="Fewer search hits + shorter prompt + lower max_tokens (recommended on CPU)",
+    )
     firstMessagePreview: str | None = Field(
         default=None,
         description="Optional; extract company via on \"...\" pattern (LocalLLM-style debug field)",
@@ -68,6 +74,7 @@ def company_intel(body: CompanyIntelBody):
             company=(body.company or "").strip(),
             title=(body.title or "a candidate").strip(),
             temperature=body.temperature,
+            fast=body.fast,
         )
         return {"report": text}
     except ValueError as e:

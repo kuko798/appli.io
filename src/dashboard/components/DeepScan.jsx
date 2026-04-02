@@ -33,8 +33,8 @@ const DeepScan = ({ job, onCancel }) => {
 
     const scanStepLabels = [
         `Searching for ${job.company}…`,
-        'Analyzing market position…',
-        'Reading culture signals…',
+        'Pulling company summary & hiring signals…',
+        'Reading culture and news context…',
         'Scanning interview patterns…',
         'Compiling intel report…',
     ];
@@ -66,7 +66,8 @@ const DeepScan = ({ job, onCancel }) => {
             const result = await fetchCompanyIntel({
                 company: job.company,
                 title: job.title || 'a candidate',
-                temperature: 0.4
+                temperature: 0.35,
+                fast: true
             });
             clearStepTimer();
             setReport(result);
@@ -165,7 +166,7 @@ const DeepScan = ({ job, onCancel }) => {
                                         <span style={{ fontSize: 14, color: '#5b708a' }}>Working…</span>
                                     </div>
                                     <div style={{ fontSize: 12, color: '#7d92a8', marginTop: 10, lineHeight: 1.5, maxWidth: 420 }}>
-                                        Search and synthesis usually finish in <strong>under a minute</strong> on a small local model; slower CPUs may take longer.
+                                        Fast mode uses fewer search hits and a shorter answer. On CPU, expect on the order of <strong>1–3 minutes</strong> for the local model; GPU is much quicker.
                                         {elapsedSec > 0 && (
                                             <span> Elapsed: {elapsedSec}s</span>
                                         )}
@@ -223,9 +224,6 @@ const DeepScan = ({ job, onCancel }) => {
                         <div style={{ textAlign: 'center', padding: '60px 40px' }}>
                             <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
                             <div style={{ fontSize: 16, fontWeight: 600, color: '#0f1728', marginBottom: 8 }}>Analysis failed</div>
-                            <div style={{ fontSize: 14, color: '#5b708a', marginBottom: 12 }}>
-                                Company Intel uses DuckDuckGo search, then your OpenAI-compatible chat server (default <code style={{ fontSize: 12 }}>pytorch_chat_server</code> on port 8000). Run <code style={{ fontSize: 12 }}>company_intel/server.py</code> on port 8780 and keep the chat backend on 8000.
-                            </div>
                             {errorDetail && (
                                 <div style={{
                                     fontSize: 12, color: '#64748b', marginBottom: 20, textAlign: 'left',

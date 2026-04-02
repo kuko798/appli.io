@@ -4,7 +4,7 @@ import JobTable from './components/JobTable';
 import AddJobForm from './components/AddJobForm';
 import InterviewSimulator from './components/InterviewSimulator';
 import DeepScan from './components/DeepScan';
-import ResumeDiagnostic from './components/ResumeDiagnostic';
+import ResumeOptimizer from './components/ResumeOptimizer';
 
 const BRAND = '#8e5be8';
 const LOGO_PURPLE = '#8e5be8';
@@ -48,8 +48,33 @@ const Logo = () => (
   </div>
 );
 
-function Avatar({ email }) {
+function Avatar({ email, pictureUrl }) {
+  const [imgErr, setImgErr] = useState(false);
+  useEffect(() => {
+    setImgErr(false);
+  }, [pictureUrl]);
   const initial = email ? email[0].toUpperCase() : '?';
+  if (pictureUrl && !imgErr) {
+    return (
+      <img
+        src={pictureUrl}
+        alt=""
+        width={32}
+        height={32}
+        referrerPolicy="no-referrer"
+        onError={() => setImgErr(true)}
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          objectFit: 'cover',
+          flexShrink: 0,
+          display: 'block',
+          border: `1px solid ${COLORS.border}`,
+        }}
+      />
+    );
+  }
   return (
     <div style={{
       width: 32, height: 32, borderRadius: '50%',
@@ -63,7 +88,7 @@ function Avatar({ email }) {
 export default function Dashboard() {
   const [jobs, setJobs] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showResumeDiagnostic, setShowResumeDiagnostic] = useState(false);
+  const [showResumeOptimizer, setShowResumeOptimizer] = useState(false);
   const [simulatingJob, setSimulatingJob] = useState(null);
   const [simulationMode, setSimulationMode] = useState('interview');
   const [scanningJob, setScanningJob] = useState(null);
@@ -71,6 +96,7 @@ export default function Dashboard() {
   const [syncStatus, setSyncStatus] = useState('');
   const [syncRange, setSyncRange] = useState('1m');
   const [userEmail, setUserEmail] = useState('');
+  const [userPicture, setUserPicture] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
   const [activeFilter, setActiveFilter] = useState(null);
@@ -85,8 +111,32 @@ export default function Dashboard() {
     }
     setIsAuthed(true);
     setUserEmail(email);
+    setUserPicture(localStorage.getItem('appli_user_picture') || '');
     loadJobs();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthed) return;
+    const token = localStorage.getItem('appli_token');
+    if (!token) return;
+    if (localStorage.getItem('appli_user_picture')) return;
+    fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((info) => {
+        if (!info) return;
+        if (info.picture) {
+          localStorage.setItem('appli_user_picture', info.picture);
+          setUserPicture(info.picture);
+        }
+        if (info.email && !localStorage.getItem('appli_user_email')) {
+          localStorage.setItem('appli_user_email', info.email);
+          setUserEmail(info.email);
+        }
+      })
+      .catch(() => {});
+  }, [isAuthed]);
 
   useEffect(() => {
     if (!isAuthed) return;
@@ -167,6 +217,7 @@ export default function Dashboard() {
     }
     localStorage.removeItem('appli_token');
     localStorage.removeItem('appli_user_email');
+    localStorage.removeItem('appli_user_picture');
     window.location.href = '../home/index.html';
   };
 
@@ -218,8 +269,8 @@ export default function Dashboard() {
             <option value="1y">1 year</option>
           </select>
 
-          <button onClick={() => setShowResumeDiagnostic(true)} style={ghostBtn}>
-            Resume Lab
+          <button onClick={() => setShowResumeOptimizer(true)} style={ghostBtn}>
+            Resume optimizer
           </button>
 
           <button onClick={() => setShowAddForm(true)} style={primaryBtn}>
@@ -250,7 +301,7 @@ export default function Dashboard() {
               onClick={() => setShowUserMenu(v => !v)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 8 }}
             >
-              <Avatar email={userEmail} />
+              <Avatar email={userEmail} pictureUrl={userPicture} />
             </button>
             {showUserMenu && (
               <>
@@ -303,7 +354,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button style={ghostBtn} onClick={() => setShowResumeDiagnostic(true)}>Resume diagnostic</button>
+              <button style={ghostBtn} onClick={() => setShowResumeOptimizer(true)}>Resume optimizer</button>
               <button style={primaryBtn} onClick={() => setShowAddForm(true)}>Add application</button>
             </div>
           </div>
@@ -327,7 +378,7 @@ export default function Dashboard() {
       {showAddForm && <AddJobForm onAdd={handleAddJob} onCancel={() => setShowAddForm(false)} />}
       {simulatingJob && <InterviewSimulator job={simulatingJob} mode={simulationMode} onCancel={() => setSimulatingJob(null)} />}
       {scanningJob && <DeepScan job={scanningJob} onCancel={() => setScanningJob(null)} />}
-      {showResumeDiagnostic && <ResumeDiagnostic onCancel={() => setShowResumeDiagnostic(false)} />}
+      {showResumeOptimizer && <ResumeOptimizer onCancel={() => setShowResumeOptimizer(false)} />}
     </div>
   );
 }

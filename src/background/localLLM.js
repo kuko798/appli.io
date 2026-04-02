@@ -27,12 +27,16 @@ const MAX_EMAIL_BODY_CHARS = 2200;
 const LARGE_MODEL_HINTS = ["65b", "70b", "72b", "90b"];
 
 const VALID_STATUSES = ["Applied", "Assessment", "Interview", "Offer", "Rejected", null];
-/** Packaged extension: local OpenAI-compatible server (e.g. pytorch_chat_server) */
+/** Local OpenAI-compatible server (pytorch_chat_server, vLLM, Ollama with OpenAI shim, etc.) */
 const DEFAULT_BASE_URL_EXTENSION = "http://localhost:8000";
 const DEFAULT_MODEL_EXTENSION = "Qwen/Qwen2.5-1.5B-Instruct";
-/** Vite dashboard / web preview: hosted API (browser cannot call local Ollama without a proxy). */
-const DEFAULT_BASE_URL_WEB = "https://api.scitely.com/v1";
-const DEFAULT_MODEL_WEB = "deepseek-v3.2";
+/**
+ * Dashboard opened outside Vite (e.g. static preview): still default to local — no cloud API key.
+ * Use extension options or mock storage to point at a hosted /v1 only if you choose to.
+ */
+const DEFAULT_BASE_URL_WEB = "http://127.0.0.1:8000";
+const DEFAULT_MODEL_WEB = DEFAULT_MODEL_EXTENSION;
+/** Empty = no Authorization header (correct for local Ollama / pytorch_chat_server). */
 const DEFAULT_API_KEY = "";
 const LOCAL_FALLBACK_BASE_URL = "http://localhost:11434";
 
@@ -61,7 +65,7 @@ function defaultPythonClassifierBase() {
 
 /**
  * Vite dev dashboard (localhost:5173): same-origin proxy to pytorch_chat_server (see vite.config.js).
- * Avoids CORS and the dead default of api.scitely.com without an API key.
+ * Avoids CORS when calling a local chat server from the browser.
  */
 function defaultLlmBaseForViteDev() {
     try {
@@ -139,7 +143,7 @@ const LocalLLM = {
                 console.log("[LocalLLM] Settings loaded:", {
                     url: normalized.ollamaUrl,
                     model: normalized.ollamaModel,
-                    hasApiKey: Boolean(normalized.llmApiKey),
+                    bearerTokenSet: Boolean(normalized.llmApiKey),
                     pythonClassifier: Boolean(normalized.pythonClassifierUrl)
                 });
                 resolve(normalized);
