@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import Stats from './components/Stats';
 import JobTable from './components/JobTable';
 import AddJobForm from './components/AddJobForm';
 import InterviewSimulator from './components/InterviewSimulator';
 import DeepScan from './components/DeepScan';
-import ResumeOptimizer from './components/ResumeOptimizer';
+
+/** PDF.js + mammoth are heavy; load only when the user opens the tool (faster dashboard first paint). */
+const ResumeOptimizer = lazy(() => import('./components/ResumeOptimizer.jsx'));
 
 const BRAND = '#8e5be8';
 const LOGO_PURPLE = '#8e5be8';
@@ -378,7 +380,48 @@ export default function Dashboard() {
       {showAddForm && <AddJobForm onAdd={handleAddJob} onCancel={() => setShowAddForm(false)} />}
       {simulatingJob && <InterviewSimulator job={simulatingJob} mode={simulationMode} onCancel={() => setSimulatingJob(null)} />}
       {scanningJob && <DeepScan job={scanningJob} onCancel={() => setScanningJob(null)} />}
-      {showResumeOptimizer && <ResumeOptimizer onCancel={() => setShowResumeOptimizer(false)} />}
+      {showResumeOptimizer && (
+        <Suspense
+          fallback={
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 2000,
+                background: 'rgba(244,247,251,0.76)',
+                backdropFilter: 'blur(10px)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 16,
+                fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#0f1728' }}>Loading resume optimizer…</div>
+              <div style={{ fontSize: 13, color: '#6f8299' }}>PDF and document libraries are downloading</div>
+              <button
+                type="button"
+                onClick={() => setShowResumeOptimizer(false)}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #d7e0ec',
+                  color: '#6a5f7e',
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          }
+        >
+          <ResumeOptimizer onCancel={() => setShowResumeOptimizer(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

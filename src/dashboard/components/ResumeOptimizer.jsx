@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import mammoth from 'mammoth';
@@ -27,6 +27,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = resolvePdfWorkerSrc();
 const BRAND = '#8e5be8';
 
 const scoreColor = (r) => (r >= 8 ? '#10b981' : r >= 5 ? '#f59e0b' : '#f87171');
+
+/** Diagnosis summary cards — domain-agnostic labels (any profession). */
+const SUMMARY_CARD_LABELS = {
+    structural_integrity: 'Structure & layout',
+    signal_strength: 'Overall signal',
+    impact_specificity: 'Impact & specificity',
+    tech_arity: 'Impact & specificity',
+};
 
 const OPEN_SOURCE_REFERENCES = [
     { name: 'HR-Breaker', desc: 'Job-specific optimization, ATS-style checks, anti-hallucination loop', url: 'https://github.com/btseytlin/hr-breaker' },
@@ -144,6 +152,12 @@ export default function ResumeOptimizer({ onCancel }) {
     const scrollRef = useRef(null);
     const timerRef = useRef(null);
 
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, []);
+
     const diagnoseSteps = [
         'Parsing resume structure…',
         'Identifying experience sections…',
@@ -224,7 +238,7 @@ export default function ResumeOptimizer({ onCancel }) {
         setReportData(null);
         if (mode === 'optimize') setOptimizedText('');
         setScanSteps([]);
-        setProgress(5);
+        setProgress(0);
         setElapsedMs(0);
         setView('scanning');
         if (timerRef.current) clearInterval(timerRef.current);
@@ -235,11 +249,9 @@ export default function ResumeOptimizer({ onCancel }) {
         const interval = setInterval(() => {
             if (i < labels.length) {
                 setScanSteps((prev) => [...prev, labels[i++]]);
-                setProgress(Math.min(75, Math.round(((i + 1) / labels.length) * 70)));
                 scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
             } else {
                 clearInterval(interval);
-                setProgress(80);
                 if (mode === 'diagnose') fetchCritique();
                 else fetchOptimizedResume();
             }
@@ -255,25 +267,30 @@ export default function ResumeOptimizer({ onCancel }) {
     };
 
     const fetchCritique = async () => {
+        setScanSteps((prev) => [
+            ...prev,
+            'Calling your local LLM — on CPU this can take several minutes. Leave this tab open; the bar moves to 100% only when the response is back.',
+        ]);
         try {
             const truncated = resumeText.trim().slice(0, 2500);
-            const prompt = `Resume reviewer. Return ONLY valid JSON, no markdown.
+            const prompt = `Resume reviewer for ANY profession (healthcare, education, sales, trades, engineering, public sector, etc.). Return ONLY valid JSON, no markdown.
 
-From the resume, pick the 3 most important work experience roles. For each role pick the 3 strongest/weakest bullets to review.
+From the resume, pick the 3 most important work experience roles. For each role pick up to 3 bullets that most need improvement (or are strongest contrasts).
 
-Scoring: rating 1-10. No metrics=<=6. Weak verbs=<=5. Real metrics=>=7.
-Critique: max 15 words. Suggestions: 2 rewrites, max 12 words each, use X%/N+ for numbers.
+Scoring: rating 1-10. Weak verbs or vague duties=<=5. Concrete scope, outcomes, or credible metrics=>=7. Metrics must match the field (patients seen, revenue, students, cases, tickets, etc.) — do not assume software.
+
+Critique: max 15 words. Suggestions: 2 alternative phrasings, max 12 words each; only use X%/N+ if the source bullet supports numbers or you keep them clearly as placeholders the candidate should verify.
 
 Resume:
 ${truncated}
 
 JSON:
-{"summary":{"structural_integrity":{"rating":0,"advice":""},"signal_strength":{"rating":0,"advice":""},"tech_arity":{"rating":0,"advice":""}},"experiences":[{"role_at_company":"Role, Company","analysis":[{"original_bullet":"text","rating":0,"critique":"","suggestions":["s1","s2"]}]}],"upgrade_path":["tip1","tip2","tip3"]}`;
+{"summary":{"structural_integrity":{"rating":0,"advice":""},"signal_strength":{"rating":0,"advice":""},"impact_specificity":{"rating":0,"advice":""}},"experiences":[{"role_at_company":"Role, Company","analysis":[{"original_bullet":"text","rating":0,"critique":"","suggestions":["s1","s2"]}]}],"upgrade_path":["tip1","tip2","tip3"]}`;
 
             const json = await LocalLLM.generateJSON({
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.2,
-                maxTokens: 1500,
+                maxTokens: 1024,
             });
             setProgress(100);
             if (timerRef.current) clearInterval(timerRef.current);
@@ -298,11 +315,12 @@ JSON:
                 }))
                 .filter((exp) => exp.analysis.length > 0);
 
+            const impactSpec = summary.impact_specificity ?? summary.tech_arity;
             setReportData({
                 summary: {
                     structural_integrity: toScore(summary.structural_integrity),
                     signal_strength: toScore(summary.signal_strength),
-                    tech_arity: toScore(summary.tech_arity),
+                    impact_specificity: toScore(impactSpec),
                 },
                 experiences,
                 upgrade_path: (raw.upgrade_path || []).filter(Boolean),
@@ -320,20 +338,24 @@ JSON:
     };
 
     const fetchOptimizedResume = async () => {
+        setScanSteps((prev) => [
+            ...prev,
+            'Calling your local LLM — full resume rewrites are large; on CPU expect several minutes. The bar completes only when the draft is returned.',
+        ]);
         try {
             const resume = resumeText.trim().slice(0, 5600);
             const jd = jobDescription.trim().slice(0, 3200);
-            const system = `You are an ATS-aware resume editor. Output ONLY the rewritten resume as plain text (no JSON, no markdown code fences, no preamble or postscript).
+            const system = `You are an ATS-aware resume editor for candidates in ANY profession (clinical, education, sales, skilled trades, logistics, government, nonprofit, creative, engineering, etc.). Output ONLY the rewritten resume as plain text (no JSON, no markdown code fences, no preamble or postscript).
 
 Layout & scanability (recruiters skim in seconds — this matters as much as wording):
-- Put ONE blank line between major sections (e.g. after Education before Professional Experience, after Professional Experience before Leadership).
-- Put ONE blank line between each distinct job and each distinct leadership organization. Never run the end of one employer's bullets straight into the next company's name on the same visual block without a blank line between them.
+- Put ONE blank line between major sections (e.g. after Education before Professional Experience, after Professional Experience before Leadership or Volunteer work).
+- Put ONE blank line between each distinct job and each distinct leadership organization. Never run the end of one employer's bullets straight into the next organization's name on the same visual block without a blank line between them.
 - Use this repeating shape for every role (experience and leadership): company/org line, then location line, then title line, then date line, then bullets — then blank line before the next role.
-- IBM and a different company (e.g. Enterprise Mobility) are ALWAYS two separate blocks with a blank line between them. Never place Enterprise Mobility's title, dates, or bullets immediately under IBM without that separator.
+- Two different employers are ALWAYS two separate blocks with a blank line between them. Never place Company B's title, dates, or bullets immediately under Company A without that separator.
 
 Employer blocks (most important):
 - Professional Experience must have the SAME number of separate job blocks as the source. Each distinct employer or organization in the source gets its own block: company line, then location, job title, date range, then ONLY that role's bullets.
-- NEVER merge two employers into one block. NEVER put another company's role title, city, dates, or bullets under the wrong company. Example error to avoid: listing "Enterprise Mobility" bullets under "IBM" or inventing a bullet like "Enterprise Mobility internship" under IBM when the source treats them as two entries.
+- NEVER merge two employers into one block. NEVER put another organization's role title, city, dates, or bullets under the wrong employer. Example error to avoid: listing "Regional Health System" content under "City School District" when the source lists them as separate jobs.
 - If the source uses a short header line (e.g. company name only) followed by another line for title/dates, preserve that logical pairing; do not reorder so bullets attach to the wrong role.
 
 Locations:
@@ -349,18 +371,20 @@ Anti-fabrication:
 - Every number, percentage, timeframe, technology, and project name in the output must trace to the same role's source bullets. Do not invent or inflate outcomes.
 - Minor grammar fixes (e.g. "school boards" → "school board") are OK if the source clearly meant singular.
 
-Technical Skills:
-- Keep Programming: and Tools: (or equivalent) as in the source. List legitimate languages/frameworks/tools only. If a fragment line belongs with Tools (e.g. "DevOps, Flask, PostgreSQL"), merge it into the Tools: line — do not leave a stray third line of tools.
+Skills & credentials (any field):
+- Preserve the source section structure: may be "Technical Skills", "Skills", "Certifications", "Clinical competencies", "Software", "Languages", etc. Use the same headings the candidate used when sensible.
+- For tech resumes, keep Programming: and Tools: (or equivalent) as in the source. For non-tech resumes, keep licenses, EHR systems, equipment, methodologies, or languages exactly as categories make sense — do not force a software-only layout if the source is clinical, retail, or education-focused.
+- Merge orphan fragment lines into the most appropriate labeled line above them (e.g. stray tools into Tools:).
 - REMOVE any standalone line that is only a comma-separated list of big consumer/tech brand names (e.g. Apple, Google, TikTok, OpenAI, Meta, NVIDIA, Salesforce, Amazon) with no job context — treat as accidental paste/OCR noise, NOT skills, even if it appears in the source.
-- If the Tools: line ends with such brand names after real tools, truncate at the last legitimate tool and delete the trailing brands.
-- Do not add new brand names to the skills section that were not in the source as real tools/languages.
+- If a labeled skills line ends with such brand names after legitimate entries, truncate at the last legitimate skill/tool and delete the trailing brands.
+- Do not add new brand names to the skills section that were not in the source as real qualifications.
 
 General:
-- Keep section order: header, Education, Professional Experience, Leadership, Technical Skills (or whatever the source uses).
+- Keep section order: header, Education, Professional Experience, then Leadership / Volunteer / Certifications / Skills as in the source.
 - Simple punctuation only — no HTML/tables.`;
 
             const tail =
-                '\n\nRemember: blank line between every role and every major section; IBM ≠ next company — separate blocks; COPY EVERY SOURCE BULLET as its own "• " line; preserve locations from source; no empty experience/leadership sections; improve wording only; drop junk brand-only skills lines.';
+                '\n\nRemember: blank line between every role and every major section; never merge two employers — separate blocks; COPY EVERY SOURCE BULLET as its own "• " line; preserve locations from source; no empty experience/leadership sections; improve wording only; drop junk brand-only skills lines; stay honest to any profession.';
             const user = jd
                 ? `Job description (use only to mirror real skills/experience; do not add false keywords):\n${jd}\n\n---\n\nSOURCE RESUME — rewrite into optimized plain text:\n${resume}${tail}`
                 : `SOURCE RESUME — rewrite for general ATS clarity and scan-friendly structure:\n${resume}${tail}`;
@@ -446,7 +470,9 @@ General:
                     <div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: '#0f1728' }}>Resume optimizer</div>
                         <div style={{ fontSize: 12, color: '#6f8299', marginTop: 1 }}>
-                            {fileName ? fileName : 'Insights, JD-aware rewrite, and side-by-side compare'}
+                            {fileName
+                                ? fileName
+                                : 'Any profession — insights, JD-aware rewrite, side-by-side compare'}
                         </div>
                     </div>
                     <button
@@ -661,7 +687,7 @@ General:
                                     <div
                                         style={{
                                             height: '100%',
-                                            width: `${progress}%`,
+                                            width: `${Math.round(progress)}%`,
                                             background: `linear-gradient(90deg, ${BRAND}, #d56cc7)`,
                                             borderRadius: 100,
                                             transition: 'width 0.3s ease',
@@ -670,7 +696,7 @@ General:
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
                                     <span style={{ fontSize: 12, color: '#6f8299' }}>{Math.round(elapsedMs / 1000)}s</span>
-                                    <span style={{ fontSize: 12, color: '#6f8299' }}>{progress}%</span>
+                                    <span style={{ fontSize: 12, color: '#6f8299' }}>{Math.round(progress)}%</span>
                                 </div>
                             </div>
                             <div ref={scrollRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -709,7 +735,11 @@ General:
                                                 animation: 'spin 0.8s linear infinite',
                                             }}
                                         />
-                                        <span style={{ fontSize: 14, color: '#5b708a' }}>Working…</span>
+                                        <span style={{ fontSize: 14, color: '#5b708a' }}>
+                                            {scanSteps.some((s) => s.includes('local LLM'))
+                                                ? 'Generating (local model)…'
+                                                : 'Working…'}
+                                        </span>
                                     </div>
                                 )}
                                 {scanSteps.some((s) => s.startsWith('Error:')) && (
@@ -768,7 +798,7 @@ General:
                                                     textTransform: 'capitalize',
                                                 }}
                                             >
-                                                {key.replace(/_/g, ' ')}
+                                                {SUMMARY_CARD_LABELS[key] || key.replace(/_/g, ' ')}
                                             </span>
                                             <span
                                                 style={{
