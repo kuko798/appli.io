@@ -73,6 +73,7 @@ function mobileSortBtn(active, brand) {
 }
 
 export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, onDeleteJob, onSimulateJob, onDeepScan }) {
+  const isNarrow = useMediaQuery('(max-width: 720px)');
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState(-1); // -1 = desc
