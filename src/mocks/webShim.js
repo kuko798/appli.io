@@ -5,8 +5,24 @@
  */
 import { gmailService } from '../services/gmailService.js';
 
-if (typeof chrome === 'undefined' || !chrome.storage) {
-    console.log('[Web shim] Appli.io browser compatibility layer');
+/** True only in a packaged MV3 extension. Every normal browser tab (Chrome, Edge, Safari, Firefox) must use the shim. */
+function isPackagedExtension() {
+    try {
+        return Boolean(
+            typeof chrome !== 'undefined' &&
+            chrome.runtime &&
+            typeof chrome.runtime.id === 'string' &&
+            chrome.runtime.id.length > 0 &&
+            chrome.storage &&
+            chrome.storage.local
+        );
+    } catch {
+        return false;
+    }
+}
+
+if (!isPackagedExtension()) {
+    console.log('[Web shim] Appli.io browser compatibility layer (web / non-extension)');
 
     const CLIENT_ID = "1097794489757-qglg0t731aplmm0o3cfq80bgbg4l64rl.apps.googleusercontent.com";
 

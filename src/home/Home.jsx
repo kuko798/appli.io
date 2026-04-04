@@ -63,23 +63,52 @@ function Logo({ size = 28 }) {
   );
 }
 
-function handleSignIn() {
-  chrome.identity.getAuthToken({ interactive: true }, (token) => {
-    if (!token) {
-      alert('Sign-in failed or was cancelled. Please try again.');
+function waitForGoogleIdentityServices(timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    if (typeof google !== 'undefined' && google.accounts?.oauth2?.initTokenClient) {
+      resolve();
       return;
     }
-    localStorage.setItem('appli_token', token);
-    fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(r => r.json()).then(info => {
-      if (info.email) localStorage.setItem('appli_user_email', info.email);
-      if (info.picture) localStorage.setItem('appli_user_picture', info.picture);
-      else localStorage.removeItem('appli_user_picture');
-    }).catch(() => {}).finally(() => {
-      window.location.href = '/src/dashboard/index.html';
-    });
+    const deadline = Date.now() + timeoutMs;
+    const id = setInterval(() => {
+      if (typeof google !== 'undefined' && google.accounts?.oauth2?.initTokenClient) {
+        clearInterval(id);
+        resolve();
+        return;
+      }
+      if (Date.now() >= deadline) {
+        clearInterval(id);
+        reject(new Error('Google sign-in could not load (accounts.google.com may be blocked or slow). Refresh and try again, or try another browser.'));
+      }
+    }, 80);
   });
+}
+
+function handleSignIn() {
+  void (async () => {
+    try {
+      await waitForGoogleIdentityServices();
+    } catch (e) {
+      alert(e.message || 'Sign-in is not ready yet.');
+      return;
+    }
+    chrome.identity.getAuthToken({ interactive: true }, (token) => {
+      if (!token) {
+        alert('Sign-in failed or was cancelled. Please try again.');
+        return;
+      }
+      localStorage.setItem('appli_token', token);
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(r => r.json()).then(info => {
+        if (info.email) localStorage.setItem('appli_user_email', info.email);
+        if (info.picture) localStorage.setItem('appli_user_picture', info.picture);
+        else localStorage.removeItem('appli_user_picture');
+      }).catch(() => {}).finally(() => {
+        window.location.href = '/src/dashboard/index.html';
+      });
+    });
+  })();
 }
 
 function WaitlistModal({ onClose }) {
@@ -183,9 +212,21 @@ export default function Home() {
         backdropFilter: 'blur(12px)'
       }}>
         <Logo />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: isCompact ? '100%' : 'auto' }}>
-          <button type="button" onClick={handleSignIn} style={{ ...btnGhost, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Sign in</button>
-          <button type="button" onClick={handleSignIn} style={{ ...btnPrimary, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Open dashboard</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: isCompact ? 'stretch' : 'flex-end', gap: 8, width: isCompact ? '100%' : 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: isCompact ? '100%' : 'auto' }}>
+            <button type="button" onClick={handleSignIn} style={{ ...btnGhost, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Sign in</button>
+            <button type="button" onClick={handleSignIn} style={{ ...btnPrimary, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Open dashboard</button>
+          </div>
+          <p style={{
+            margin: 0,
+            maxWidth: 420,
+            fontSize: 11,
+            lineHeight: 1.45,
+            color: COLORS.subtle,
+            textAlign: isCompact ? 'center' : 'right',
+          }}>
+            This site runs in your browser (not as a system app). Sign-in and saved jobs are kept separately in each browser—Chrome, Edge, Safari, and Firefox do not share them. Use the same Google account in each if you want consistent identity; turn on server sync in deploy settings to share job lists across devices.
+          </p>
         </div>
       </nav>
 
