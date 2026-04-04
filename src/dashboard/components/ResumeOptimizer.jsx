@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, startTransition } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import mammoth from 'mammoth';
@@ -163,7 +163,7 @@ export default function ResumeOptimizer({ onCancel }) {
             if (i < labels.length) {
                 setScanSteps((prev) => [...prev, labels[i++]]);
                 setProgress(Math.round(((i) / (labels.length + 1)) * 70));
-                scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+                scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'auto' });
             } else {
                 clearInterval(interval);
                 fetchCritique();
@@ -223,12 +223,16 @@ JSON:
                 temperature: 0.2,
                 maxTokens: neededTokens,
             });
-            setProgress(100);
-            if (timerRef.current) clearInterval(timerRef.current);
-
+            // Yield so the browser can paint; large JSON + huge insights tree can freeze Edge otherwise.
+            await new Promise((r) => setTimeout(r, 0));
             const coveredJson = enforceCritiqueBulletCoverage(json, resumeForModel, blockCount);
-            setReportData(buildReportDataFromCritiqueJson(coveredJson));
-            setView('insights');
+            const report = buildReportDataFromCritiqueJson(coveredJson);
+            if (timerRef.current) clearInterval(timerRef.current);
+            startTransition(() => {
+                setProgress(100);
+                setReportData(report);
+                setView('insights');
+            });
         } catch (err) {
             setProgress(100);
             if (timerRef.current) clearInterval(timerRef.current);
@@ -304,10 +308,14 @@ Honest JD alignment (patterns per Resume Matcher / srbhr/Resume-Matcher: truthfu
                 temperature: 0.2,
                 maxTokens: 7200,
             });
-            setProgress(100);
+            await new Promise((r) => setTimeout(r, 0));
+            const cleaned = cleanOptimizedOutput(out);
             if (timerRef.current) clearInterval(timerRef.current);
-            setOptimizedText(cleanOptimizedOutput(out));
-            setView('compare');
+            startTransition(() => {
+                setProgress(100);
+                setOptimizedText(cleaned);
+                setView('compare');
+            });
         } catch (err) {
             setProgress(100);
             if (timerRef.current) clearInterval(timerRef.current);
