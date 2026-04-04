@@ -1,5 +1,6 @@
 /**
- * Optional cross-device job list sync via the FastAPI `webapp` (Bearer token = same Google account as GIS).
+ * Optional cross-device sync via the FastAPI `webapp` (Bearer token = same Google account as GIS).
+ * Jobs: GET/PUT /api/jobs/bearer. User profile: GET /api/profile/bearer (see userProfileSync.js).
  * Build with: VITE_JOBS_API_BASE=https://your-webapp-host.example.com
  * Server must set APPLI_CORS_ORIGINS to that static origin (and enable HTTPS).
  */

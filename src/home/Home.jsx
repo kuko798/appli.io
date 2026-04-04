@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useMediaQuery } from '../dashboard/utils/useMediaQuery.js';
+import { syncUserProfileFromServer } from '../services/userProfileSync.js';
 
 const BRAND = '#8e5be8';
 const LOGO_PURPLE = '#8e5be8';
@@ -93,20 +94,30 @@ function handleSignIn() {
       return;
     }
     chrome.identity.getAuthToken({ interactive: true }, (token) => {
-      if (!token) {
-        alert('Sign-in failed or was cancelled. Please try again.');
-        return;
-      }
-      localStorage.setItem('appli_token', token);
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(r => r.json()).then(info => {
-        if (info.email) localStorage.setItem('appli_user_email', info.email);
-        if (info.picture) localStorage.setItem('appli_user_picture', info.picture);
-        else localStorage.removeItem('appli_user_picture');
-      }).catch(() => {}).finally(() => {
+      void (async () => {
+        if (!token) {
+          alert('Sign-in failed or was cancelled. Please try again.');
+          return;
+        }
+        localStorage.setItem('appli_token', token);
+        const fromServer = await syncUserProfileFromServer();
+        if (!fromServer?.email) {
+          try {
+            const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const info = r.ok ? await r.json() : null;
+            if (info?.email) localStorage.setItem('appli_user_email', info.email);
+            if (info?.picture) localStorage.setItem('appli_user_picture', info.picture);
+            else localStorage.removeItem('appli_user_picture');
+            if (info?.name) localStorage.setItem('appli_user_name', info.name);
+            else localStorage.removeItem('appli_user_name');
+          } catch {
+            /* ignore */
+          }
+        }
         window.location.href = '/src/dashboard/index.html';
-      });
+      })();
     });
   })();
 }
@@ -225,7 +236,7 @@ export default function Home() {
             color: COLORS.subtle,
             textAlign: isCompact ? 'center' : 'right',
           }}>
-            This site runs in your browser (not as a system app). Sign-in and saved jobs are kept separately in each browser—Chrome, Edge, Safari, and Firefox do not share them. Use the same Google account in each if you want consistent identity; turn on server sync in deploy settings to share job lists across devices.
+            This site runs in your browser. Without a deployed Appli API, sign-in tokens and data stay only in that browser. With <code style={{ fontSize: 10 }}>VITE_JOBS_API_BASE</code> pointing at your webapp, the same Google account loads shared jobs and profile (name, photo) from the server in Chrome, Edge, or any other browser.
           </p>
         </div>
       </nav>

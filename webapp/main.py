@@ -11,7 +11,7 @@ Environment:
   APPLI_PUBLIC_URL       default http://127.0.0.1:8766
   GOOGLE_REDIRECT_URI    optional override (must match Console exactly)
   APPLI_WEBAPP_HOST      bind address (default 127.0.0.1; use 0.0.0.0 in Docker)
-  APPLI_CORS_ORIGINS     comma-separated origins for /api/jobs/bearer (e.g. https://app.pages.dev)
+  APPLI_CORS_ORIGINS     comma-separated origins for Bearer JSON APIs (jobs + profile), e.g. https://app.pages.dev
   APPLI_OLLAMA_MODEL     optional, e.g. llama3.2 — local Ollama for smarter labels
   APPLI_OLLAMA_HOST      default http://127.0.0.1:11434
 
@@ -24,9 +24,11 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -110,8 +112,8 @@ def get_credentials(request: Request) -> Credentials:
     return c
 
 
-def _email_from_access_token(authorization: str | None) -> str:
-    """Resolve Gmail user email from a GIS access token (mobile / static dashboard)."""
+def _userinfo_from_access_token(authorization: str | None) -> dict[str, Any]:
+    """Verify GIS access token and return normalized Google userinfo fields."""
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Missing or invalid Authorization header")
     token = authorization[7:].strip()
@@ -128,13 +130,27 @@ def _email_from_access_token(authorization: str | None) -> str:
         raise HTTPException(401, f"Token rejected ({e.code})") from e
     except Exception as exc:
         raise HTTPException(401, "Could not verify access token") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(401, "Invalid userinfo response")
     email = (payload.get("email") or "").strip()
     if not email:
         raise HTTPException(
             401,
             "Access token has no email — add userinfo.email scope in Google Identity Services.",
         )
-    return email
+    return {
+        "email": email,
+        "email_verified": bool(payload.get("email_verified")),
+        "name": (payload.get("name") or "").strip(),
+        "picture": (payload.get("picture") or "").strip(),
+        "sub": (payload.get("sub") or "").strip(),
+    }
+
+
+def _email_from_access_token(authorization: str | None) -> str:
+    """Resolve Gmail user email from a GIS access token (mobile / static dashboard)."""
+    info = _userinfo_from_access_token(authorization)
+    return info["email"]
 
 
 def ensure_user_email(request: Request, creds: Credentials) -> str:
@@ -241,6 +257,34 @@ async def api_jobs_bearer_put(request: Request, authorization: str | None = Head
         raise HTTPException(400, 'Body must be JSON object with "jobs" array')
     storage.save_jobs(email, jobs)
     return {"ok": True}
+
+
+@app.get("/api/profile/bearer")
+def api_profile_bearer(authorization: str | None = Header(None)):
+    """
+    Canonical user profile for the static dashboard: verify token, merge with stored record, persist.
+    Same Google account gets the same profile from Chrome, Edge, phone, etc. when VITE_JOBS_API_BASE points here.
+    """
+    fresh = _userinfo_from_access_token(authorization)
+    email = fresh["email"]
+    stored = storage.load_profile(email)
+    merged: dict[str, Any] = {
+        **stored,
+        "email": email,
+        "google_sub": fresh["sub"] or stored.get("google_sub") or "",
+        "name": fresh["name"] or stored.get("name") or "",
+        "picture": fresh["picture"] or stored.get("picture") or "",
+        "email_verified": fresh["email_verified"],
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    storage.save_profile(email, merged)
+    return {
+        "email": merged["email"],
+        "name": merged.get("name") or "",
+        "picture": merged.get("picture") or "",
+        "sub": merged.get("google_sub") or "",
+        "updated_at": merged.get("updated_at"),
+    }
 
 
 @app.post("/api/sync")

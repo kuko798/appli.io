@@ -43,6 +43,25 @@ def save_jobs(email: str, jobs: list[dict[str, Any]]) -> None:
     tmp.replace(p)
 
 
+def load_profile(email: str) -> dict[str, Any]:
+    """Server-side user profile (same Google account from any browser)."""
+    p = _user_dir(email) / "profile.json"
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_profile(email: str, profile: dict[str, Any]) -> None:
+    p = _user_dir(email) / "profile.json"
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(profile, indent=2), encoding="utf-8")
+    tmp.replace(p)
+
+
 STATUS_PRIORITY = {"Applied": 1, "Interview": 2, "Rejected": 3, "Offer": 4}
 
 

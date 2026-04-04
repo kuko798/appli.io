@@ -1,5 +1,6 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { pullRemoteJobsMergeOnLogin, scheduleRemoteJobsPush, jobsApiBase } from './jobsSync.js';
+import { syncUserProfileFromServer } from '../services/userProfileSync.js';
 import { useMediaQuery } from './utils/useMediaQuery.js';
 import Stats from './components/Stats';
 import JobTable from './components/JobTable';
@@ -27,14 +28,15 @@ const HOME_PATH = '/src/home/index.html';
 function readAuthSnapshot() {
   try {
     const token = localStorage.getItem('appli_token');
-    if (!token) return { authed: false, email: '', picture: '' };
+    if (!token) return { authed: false, email: '', picture: '', name: '' };
     return {
       authed: true,
       email: localStorage.getItem('appli_user_email') || '',
       picture: localStorage.getItem('appli_user_picture') || '',
+      name: localStorage.getItem('appli_user_name') || '',
     };
   } catch {
-    return { authed: false, email: '', picture: '' };
+    return { authed: false, email: '', picture: '', name: '' };
   }
 }
 
@@ -118,6 +120,7 @@ export default function Dashboard() {
   const [syncRange, setSyncRange] = useState('1m');
   const [userEmail, setUserEmail] = useState(() => readAuthSnapshot().email);
   const [userPicture, setUserPicture] = useState(() => readAuthSnapshot().picture);
+  const [userName, setUserName] = useState(() => readAuthSnapshot().name);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isAuthed, setIsAuthed] = useState(() => readAuthSnapshot().authed);
   const [activeFilter, setActiveFilter] = useState(null);
@@ -131,8 +134,13 @@ export default function Dashboard() {
     setIsAuthed(true);
     setUserEmail(localStorage.getItem('appli_user_email') || '');
     setUserPicture(localStorage.getItem('appli_user_picture') || '');
+    setUserName(localStorage.getItem('appli_user_name') || '');
     (async () => {
       await pullRemoteJobsMergeOnLogin();
+      await syncUserProfileFromServer();
+      setUserEmail(localStorage.getItem('appli_user_email') || '');
+      setUserPicture(localStorage.getItem('appli_user_picture') || '');
+      setUserName(localStorage.getItem('appli_user_name') || '');
       loadJobs();
     })();
   }, []);
@@ -155,6 +163,10 @@ export default function Dashboard() {
         if (info.email && !localStorage.getItem('appli_user_email')) {
           localStorage.setItem('appli_user_email', info.email);
           setUserEmail(info.email);
+        }
+        if (info.name && !localStorage.getItem('appli_user_name')) {
+          localStorage.setItem('appli_user_name', info.name);
+          setUserName(info.name);
         }
       })
       .catch(() => {});
@@ -246,6 +258,7 @@ export default function Dashboard() {
     localStorage.removeItem('appli_token');
     localStorage.removeItem('appli_user_email');
     localStorage.removeItem('appli_user_picture');
+    localStorage.removeItem('appli_user_name');
     window.location.href = HOME_PATH;
   };
 
@@ -340,10 +353,15 @@ export default function Dashboard() {
                     maxWidth: 'min(280px, calc(100vw - 24px))',
                     boxShadow: '0 12px 40px rgba(0,0,0,0.18)'
                   }}>
-                    {userEmail && (
+                    {(userEmail || userName) && (
                       <div style={{ padding: '8px 12px', marginBottom: 4 }}>
                         <div style={{ fontSize: 11, color: COLORS.subtle, marginBottom: 2 }}>Signed in as</div>
-                        <div style={{ fontSize: 13, color: COLORS.muted, fontWeight: 500, wordBreak: 'break-all' }}>{userEmail}</div>
+                        {userName ? (
+                          <div style={{ fontSize: 14, color: COLORS.text, fontWeight: 600, marginBottom: 4 }}>{userName}</div>
+                        ) : null}
+                        {userEmail ? (
+                          <div style={{ fontSize: 13, color: COLORS.muted, fontWeight: 500, wordBreak: 'break-all' }}>{userEmail}</div>
+                        ) : null}
                       </div>
                     )}
                     <div style={{ height: 1, background: COLORS.border, margin: '4px 0' }} />
