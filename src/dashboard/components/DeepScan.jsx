@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { fetchCompanyIntel } from '../../services/companyIntelService.js';
+import { useMediaQuery } from '../utils/useMediaQuery.js';
 
 const BRAND = '#8e5be8';
 const STEP_INTERVAL_MS = 320;
 
 const DeepScan = ({ job, onCancel }) => {
+    const isNarrow = useMediaQuery('(max-width: 720px)');
     const [phase, setPhase] = useState('ready'); // ready | scanning | done | error
     const [steps, setSteps] = useState([]);
     const [report, setReport] = useState(null);
@@ -86,19 +88,25 @@ const DeepScan = ({ job, onCancel }) => {
         <div style={{
             position: 'fixed', inset: 0, zIndex: 1100,
             background: 'rgba(244,247,251,0.76)', backdropFilter: 'blur(10px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
+            display: 'flex', alignItems: isNarrow ? 'flex-end' : 'center', justifyContent: 'center',
+            padding: isNarrow ? '0' : '16px',
+            paddingBottom: isNarrow ? 'env(safe-area-inset-bottom, 0px)' : '16px',
         }}>
             <div style={{
-                width: 780, maxHeight: '88vh', background: '#ffffff',
-                border: '1px solid #d7e0ec', borderRadius: 16,
+                width: isNarrow ? '100%' : 780,
+                maxWidth: isNarrow ? '100%' : 780,
+                maxHeight: isNarrow ? 'min(92dvh, 100% - env(safe-area-inset-top))' : '88vh',
+                background: '#ffffff',
+                border: isNarrow ? 'none' : '1px solid #d7e0ec',
+                borderRadius: isNarrow ? '16px 16px 0 0' : 16,
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                boxShadow: '0 20px 60px rgba(15,23,40,0.14)'
+                boxShadow: isNarrow ? '0 -12px 48px rgba(15,23,40,0.12)' : '0 20px 60px rgba(15,23,40,0.14)'
             }}>
                 {/* Header */}
                 <div style={{
-                    padding: '18px 24px', borderBottom: '1px solid #d7e0ec',
+                    padding: isNarrow ? '14px 16px' : '18px 24px', borderBottom: '1px solid #d7e0ec',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    flexShrink: 0
+                    flexShrink: 0, gap: 12, flexWrap: 'wrap'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
@@ -121,7 +129,11 @@ const DeepScan = ({ job, onCancel }) => {
                 </div>
 
                 {/* Body */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
+                <div style={{
+                    flex: 1, overflowY: 'auto',
+                    padding: isNarrow ? '18px 16px calc(20px + env(safe-area-inset-bottom, 0px))' : 28,
+                    WebkitOverflowScrolling: 'touch',
+                }}>
 
                     {phase === 'ready' && (
                         <div style={{ textAlign: 'center', padding: '60px 40px' }}>

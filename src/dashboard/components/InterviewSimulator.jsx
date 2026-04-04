@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LocalLLM from '../../background/localLLM.js';
+import { useMediaQuery } from '../utils/useMediaQuery.js';
 
 const BRAND = '#8e5be8';
 
 export default function InterviewSimulator({ job, mode = 'interview', onCancel }) {
+    const isNarrow = useMediaQuery('(max-width: 720px)');
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -153,25 +155,33 @@ export default function InterviewSimulator({ job, mode = 'interview', onCancel }
         <div style={{
             position: 'fixed', inset: 0, zIndex: 2000,
             background: 'rgba(244,247,251,0.76)', backdropFilter: 'blur(10px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
+            display: 'flex', alignItems: isNarrow ? 'flex-end' : 'center', justifyContent: 'center',
+            padding: isNarrow ? '0' : '16px',
+            paddingBottom: isNarrow ? 'env(safe-area-inset-bottom, 0px)' : '16px',
         }}>
             <div style={{
-                width: 860, height: '88vh', background: '#ffffff',
-                border: '1px solid #d7e0ec', borderRadius: 16,
+                width: isNarrow ? '100%' : 860,
+                maxWidth: isNarrow ? '100%' : 860,
+                height: isNarrow ? 'min(92dvh, 100%)' : '88vh',
+                maxHeight: isNarrow ? 'min(92dvh, 100% - env(safe-area-inset-top))' : '88vh',
+                background: '#ffffff',
+                border: isNarrow ? 'none' : '1px solid #d7e0ec',
+                borderRadius: isNarrow ? '16px 16px 0 0' : 16,
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                boxShadow: '0 20px 60px rgba(15,23,40,0.14)'
+                boxShadow: isNarrow ? '0 -12px 48px rgba(15,23,40,0.12)' : '0 20px 60px rgba(15,23,40,0.14)',
+                position: 'relative',
             }}>
                 {/* Header */}
                 <div style={{
-                    padding: '16px 24px', borderBottom: '1px solid #d7e0ec',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    flexShrink: 0
+                    padding: isNarrow ? '14px 16px' : '16px 24px', borderBottom: '1px solid #d7e0ec',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                    flexShrink: 0, gap: 12, flexWrap: 'wrap'
                 }}>
-                    <div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f1728' }}>{title}</div>
-                        <div style={{ fontSize: 12, color: '#6f8299', marginTop: 2 }}>{subtitle}</div>
+                    <div style={{ minWidth: 0, flex: '1 1 200px' }}>
+                        <div style={{ fontSize: isNarrow ? 14 : 15, fontWeight: 700, color: '#0f1728' }}>{title}</div>
+                        <div style={{ fontSize: 12, color: '#6f8299', marginTop: 2, wordBreak: 'break-word' }}>{subtitle}</div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {started && (
                             <>
                                 {fillerCount > 0 && (
@@ -216,8 +226,8 @@ export default function InterviewSimulator({ job, mode = 'interview', onCancel }
                 {/* Camera pip */}
                 {isCameraOn && (
                     <div style={{
-                        position: 'absolute', bottom: 90, right: 32,
-                        width: 200, height: 112, borderRadius: 10,
+                        position: 'absolute', bottom: isNarrow ? 100 : 90, right: isNarrow ? 12 : 32,
+                        width: isNarrow ? 160 : 200, height: isNarrow ? 90 : 112, borderRadius: 10,
                         overflow: 'hidden', border: '1px solid #d7e0ec',
                         background: '#f8fbff', zIndex: 10
                     }}>
@@ -226,7 +236,7 @@ export default function InterviewSimulator({ job, mode = 'interview', onCancel }
                 )}
                 {cameraError && (
                     <div style={{
-                        position: 'absolute', bottom: 90, right: 32,
+                        position: 'absolute', bottom: isNarrow ? 100 : 90, right: isNarrow ? 12 : 32,
                         background: '#ffffff', border: '1px solid #d7e0ec',
                         borderRadius: 10, padding: '12px 16px', fontSize: 12,
                         color: '#f87171', zIndex: 10
@@ -234,7 +244,10 @@ export default function InterviewSimulator({ job, mode = 'interview', onCancel }
                 )}
 
                 {/* Messages */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{
+                    flex: 1, overflowY: 'auto', padding: isNarrow ? '16px 14px' : '24px 28px',
+                    display: 'flex', flexDirection: 'column', gap: 16, WebkitOverflowScrolling: 'touch',
+                }}>
                     {!started ? (
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 16 }}>
                             <div style={{ fontSize: 36 }}>{isFollowUp ? '✉️' : '🎤'}</div>
@@ -261,7 +274,7 @@ export default function InterviewSimulator({ job, mode = 'interview', onCancel }
                                     justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start'
                                 }}>
                                     <div style={{
-                                        maxWidth: '72%',
+                                        maxWidth: isNarrow ? '92%' : '72%',
                                         background: m.role === 'user' ? '#f3eaff' : '#f8f7fc',
                                         border: `1px solid ${m.role === 'user' ? '#bad0ff' : '#d7e0ec'}`,
                                         borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
@@ -298,10 +311,11 @@ export default function InterviewSimulator({ job, mode = 'interview', onCancel }
                 {/* Input */}
                 {started && (
                     <div style={{
-                        padding: '16px 24px', borderTop: '1px solid #d7e0ec',
+                        padding: isNarrow ? '12px 14px calc(12px + env(safe-area-inset-bottom, 0px))' : '16px 24px',
+                        borderTop: '1px solid #d7e0ec',
                         flexShrink: 0
                     }}>
-                        <form onSubmit={sendMessage} style={{ display: 'flex', gap: 10 }}>
+                        <form onSubmit={sendMessage} style={{ display: 'flex', gap: 10, flexDirection: isNarrow ? 'column' : 'row' }}>
                             <input
                                 autoFocus
                                 value={input}
@@ -310,18 +324,19 @@ export default function InterviewSimulator({ job, mode = 'interview', onCancel }
                                 disabled={isTyping}
                                 style={{
                                     flex: 1, background: '#ffffff', border: '1px solid #d7e0ec',
-                                    borderRadius: 10, color: '#0f1728', padding: '11px 16px',
-                                    fontSize: 14, outline: 'none', fontFamily: 'inherit',
-                                    opacity: isTyping ? 0.6 : 1
+                                    borderRadius: 10, color: '#0f1728', padding: isNarrow ? '12px 14px' : '11px 16px',
+                                    fontSize: isNarrow ? 16 : 14, outline: 'none', fontFamily: 'inherit',
+                                    opacity: isTyping ? 0.6 : 1, width: isNarrow ? '100%' : 'auto', boxSizing: 'border-box',
                                 }}
                                 onFocus={e => e.target.style.borderColor = BRAND}
                                 onBlur={e => e.target.style.borderColor = '#d7e0ec'}
                             />
                             <button type="submit" disabled={isTyping || !input.trim()} style={{
                                 background: BRAND, color: '#fff', border: 'none',
-                                padding: '11px 22px', borderRadius: 10,
+                                padding: isNarrow ? '12px 22px' : '11px 22px', borderRadius: 10,
                                 fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                                fontFamily: 'inherit', opacity: (isTyping || !input.trim()) ? 0.5 : 1
+                                fontFamily: 'inherit', opacity: (isTyping || !input.trim()) ? 0.5 : 1,
+                                width: isNarrow ? '100%' : 'auto', minHeight: isNarrow ? 48 : undefined,
                             }}>Send</button>
                         </form>
                     </div>

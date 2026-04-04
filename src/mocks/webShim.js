@@ -91,7 +91,11 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
                 if (typeof google !== 'undefined' && google.accounts) {
                     const client = google.accounts.oauth2.initTokenClient({
                         client_id: CLIENT_ID,
-                        scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.profile',
+                        scope: [
+                            'https://www.googleapis.com/auth/gmail.readonly',
+                            'https://www.googleapis.com/auth/userinfo.email',
+                            'https://www.googleapis.com/auth/userinfo.profile',
+                        ].join(' '),
                         callback: (response) => {
                             if (response.access_token) {
                                 storeToken(response.access_token, response.expires_in);

@@ -2,6 +2,14 @@ from __future__ import annotations
 
 from typing import Optional
 
+# Truthfulness and tone ideas aligned with https://github.com/srbhr/Resume-Matcher (Apache-2.0).
+RESUME_MATCHER_STYLE_RULES = (
+    "Weave job-description vocabulary only where the source bullet already supports it; "
+    "do not add skills, tools, or metrics that are not implied by the original. "
+    "Prefer plain verbs (led, built, used) over flashy resume clichés unless the source uses them. "
+    "Avoid em-dashes; use commas or periods."
+)
+
 DOMAIN_GUIDANCE = {
     "Engineering": "Emphasize systems, tools, reliability, scale, and measurable technical outcomes only if supported by the source text.",
     "Sales": "Emphasize revenue, pipeline, clients, growth, and quotas only when plausible from the bullet.",
@@ -32,6 +40,7 @@ def build_rewrite_prompt(
     return f"""Rewrite this resume bullet for maximum clarity and professional impact. The candidate may be in ANY field.
 
 Rules:
+- {RESUME_MATCHER_STYLE_RULES}
 - Strong action verb + what they did + how + outcome when the source supports it.
 - Do NOT invent numbers, percentages, dollar amounts, rankings, or employer metrics. If the bullet has no numbers, improve wording only; you may use qualitative scope (e.g. "cross-functional team", "high-volume shift") when clearly implied.
 - Do NOT add tools, certifications, or job duties not implied by the original bullet.
@@ -57,5 +66,6 @@ def build_full_resume_system_prompt() -> str:
     """Optional: same principles as the React optimizer, for server-side full-resume passes."""
     return (
         "You are an ATS-aware resume editor for candidates in any profession (clinical, education, sales, trades, engineering, etc.). "
-        "Preserve facts; improve structure and wording; do not invent metrics."
+        "Preserve facts; improve structure and wording; do not invent metrics. "
+        + RESUME_MATCHER_STYLE_RULES
     )

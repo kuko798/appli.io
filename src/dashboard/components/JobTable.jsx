@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useMediaQuery } from '../utils/useMediaQuery.js';
 
 const ITEMS_PER_PAGE = 20;
 const BRAND = '#8e5be8';
@@ -57,6 +58,20 @@ function ActionBtn({ children, color = BRAND, onClick, title }) {
   );
 }
 
+function mobileSortBtn(active, brand) {
+  return {
+    background: active ? `${brand}12` : '#ffffff',
+    border: `1px solid ${active ? `${brand}40` : '#d7e0ec'}`,
+    color: active ? brand : '#55708f',
+    padding: '6px 12px',
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  };
+}
+
 export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, onDeleteJob, onSimulateJob, onDeepScan }) {
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState('date');
@@ -105,7 +120,7 @@ export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, 
     return (
       <div style={{
         background: '#ffffff', border: '1px solid #d7e0ec', borderRadius: 14,
-        padding: '80px 40px', textAlign: 'center'
+        padding: isNarrow ? '56px 20px' : '80px 40px', textAlign: 'center'
       }}>
         <div style={{ fontSize: 38, marginBottom: 16 }}>📭</div>
         <div style={{ fontSize: 17, fontWeight: 700, color: '#0f1728', marginBottom: 8 }}>No applications yet</div>
@@ -119,8 +134,8 @@ export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, 
 
       {/* Table header bar */}
       <div style={{
-        padding: '14px 22px', borderBottom: '1px solid #d7e0ec',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+        padding: isNarrow ? '12px 16px' : '14px 22px', borderBottom: '1px solid #d7e0ec',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 14, fontWeight: 650, color: '#0f1728' }}>Applications</span>
@@ -134,6 +149,142 @@ export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, 
         <span style={{ fontSize: 12, color: '#5b708a' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
+      {isNarrow ? (
+        <div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
+            borderBottom: '1px solid #e5edf7', background: '#f7fafe', flexWrap: 'wrap'
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#6883a1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sort</span>
+            <button type="button" onClick={() => toggleSort('date')} style={mobileSortBtn(sortKey === 'date', BRAND)}>
+              Date{sortKey === 'date' ? (sortDir === -1 ? ' ↓' : ' ↑') : ''}
+            </button>
+            <button type="button" onClick={() => toggleSort('company')} style={mobileSortBtn(sortKey === 'company', BRAND)}>
+              Company{sortKey === 'company' ? (sortDir === -1 ? ' ↓' : ' ↑') : ''}
+            </button>
+          </div>
+          {current.map((job, idx) => {
+            const cold = isCold(job.date);
+            const canTrain = job.status === 'Interview';
+            const color = companyColor(job.company);
+            return (
+              <div
+                key={job.id}
+                style={{
+                  padding: '16px 16px',
+                  borderBottom: idx < current.length - 1 ? '1px solid #e5edf7' : 'none',
+                  borderLeft: cold ? '3px solid #f8717140' : '3px solid transparent',
+                  background: '#ffffff',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                      background: `${color}18`, border: `1px solid ${color}30`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 14, fontWeight: 700, color
+                    }}>
+                      {(job.company || '?')[0].toUpperCase()}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#0f1728', lineHeight: 1.25 }}>
+                        {job.company || 'Unknown'}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#6b839f', marginTop: 2 }}>
+                        {new Date(job.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <StatusBadge status={job.status} onChange={val => onUpdateJob(job.id, { status: val })} />
+                    {cold && (
+                      <span title="No activity in 10+ days" style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: '#f87171', color: '#fff', fontSize: 11, fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0
+                      }}>!</span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ marginTop: 10, fontSize: 14, color: '#3f5a78', fontWeight: 500 }}>
+                  {editingRoleId === job.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input
+                        value={editingRoleValue}
+                        onChange={e => setEditingRoleValue(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveRoleEdit(job);
+                          if (e.key === 'Escape') cancelRoleEdit();
+                        }}
+                        autoFocus
+                        style={{
+                          width: '100%',
+                          background: '#ffffff',
+                          border: `1px solid ${BRAND}55`,
+                          borderRadius: 8,
+                          color: '#0f1728',
+                          padding: '10px 12px',
+                          fontSize: 14,
+                          fontFamily: 'inherit',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button type="button" onClick={() => saveRoleEdit(job)} style={{
+                          background: `${BRAND}14`, border: `1px solid ${BRAND}35`, color: BRAND,
+                          padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                          cursor: 'pointer', fontFamily: 'inherit'
+                        }}>Save</button>
+                        <button type="button" onClick={cancelRoleEdit} style={{
+                          background: 'transparent', border: '1px solid #d7e0ec', color: '#6a5f7e',
+                          padding: '8px 14px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit'
+                        }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ wordBreak: 'break-word' }}>{job.title || '—'}</span>
+                      <button
+                        type="button"
+                        onClick={() => beginRoleEdit(job)}
+                        style={{
+                          background: 'transparent', border: '1px solid #d7e0ec', color: '#6b839f',
+                          padding: '4px 10px', borderRadius: 999, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                          flexShrink: 0
+                        }}
+                      >Edit</button>
+                    </div>
+                  )}
+                </div>
+                {job.subject ? (
+                  <div style={{
+                    marginTop: 8, fontSize: 13, color: '#6b839f', lineHeight: 1.45,
+                    wordBreak: 'break-word'
+                  }}>
+                    {job.subject}
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <ActionBtn onClick={() => onDeepScan(job)} color="#a78bfa" title="Company intel">Intel</ActionBtn>
+                  {(cold || canTrain) && (
+                    <ActionBtn
+                      onClick={() => onSimulateJob(job, cold ? 'follow-up' : 'interview')}
+                      color={cold ? '#f87171' : '#8e5be8'}
+                      title={cold ? 'Generate follow-up' : 'Interview prep'}
+                    >
+                      {cold ? 'Follow Up' : 'Prep'}
+                    </ActionBtn>
+                  )}
+                  <ActionBtn onClick={() => onDeleteJob(job.id)} color="#f87171" title="Delete">Remove</ActionBtn>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#f7fafe' }}>
@@ -300,11 +451,13 @@ export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, 
           })}
         </tbody>
       </table>
+      )}
 
       {totalPages > 1 && (
         <div style={{
-          padding: '14px 22px', borderTop: '1px solid #d7e0ec',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          padding: isNarrow ? '12px 16px' : '14px 22px', borderTop: '1px solid #d7e0ec',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 10
         }}>
           <span style={{ fontSize: 12, color: '#6b839f' }}>
             Page {page} of {totalPages} · {filtered.length} results

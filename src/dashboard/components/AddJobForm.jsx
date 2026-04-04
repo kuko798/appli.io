@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useMediaQuery } from '../utils/useMediaQuery.js';
 
 const BRAND = '#8e5be8';
 
@@ -9,14 +10,16 @@ const Field = ({ label, children }) => (
     </div>
 );
 
-const inputStyle = {
+const inputStyleBase = (narrow) => ({
     background: '#ffffff', border: '1px solid #d7e0ec', borderRadius: 10,
-    color: '#0f1728', padding: '11px 14px', fontSize: 14,
+    color: '#0f1728', padding: narrow ? '12px 14px' : '11px 14px', fontSize: narrow ? 16 : 14,
     outline: 'none', fontFamily: 'inherit', width: '100%',
     boxSizing: 'border-box'
-};
+});
 
 export default function AddJobForm({ onAdd, onCancel }) {
+    const isNarrow = useMediaQuery('(max-width: 560px)');
+    const inputStyle = inputStyleBase(isNarrow);
     const [formData, setFormData] = useState({
         company: '',
         title: '',
@@ -46,11 +49,20 @@ export default function AddJobForm({ onAdd, onCancel }) {
         <div style={{
             position: 'fixed', inset: 0, zIndex: 1000,
             background: 'rgba(244,247,251,0.7)', backdropFilter: 'blur(10px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
+            display: 'flex', alignItems: isNarrow ? 'flex-end' : 'center',
+            justifyContent: 'center',
+            padding: isNarrow ? '0' : '16px',
+            paddingBottom: isNarrow ? 'env(safe-area-inset-bottom, 0px)' : '16px',
         }}>
             <div style={{
-                background: '#ffffff', border: '1px solid #d7e0ec', borderRadius: 16,
-                padding: '32px 28px', width: 480, boxShadow: '0 24px 80px rgba(0,0,0,0.5)'
+                background: '#ffffff', border: isNarrow ? 'none' : '1px solid #d7e0ec',
+                borderRadius: isNarrow ? '16px 16px 0 0' : 16,
+                padding: isNarrow ? '22px 18px 24px' : '32px 28px',
+                width: '100%', maxWidth: 480,
+                maxHeight: isNarrow ? 'min(92dvh, 100% - env(safe-area-inset-top))' : 'none',
+                overflowY: 'auto',
+                boxShadow: isNarrow ? '0 -8px 40px rgba(0,0,0,0.12)' : '0 24px 80px rgba(0,0,0,0.5)',
+                WebkitOverflowScrolling: 'touch',
             }}>
                 <div style={{ marginBottom: 24 }}>
                     <div style={{ fontSize: 17, fontWeight: 700, color: '#0f1728', marginBottom: 4 }}>Add application</div>
@@ -79,9 +91,9 @@ export default function AddJobForm({ onAdd, onCancel }) {
                             onBlur={e => e.target.style.borderColor = '#d7e0ec'} />
                     </Field>
 
-                    <div style={{ display: 'flex', gap: 14 }}>
+                    <div style={{ display: 'flex', gap: 14, flexDirection: isNarrow ? 'column' : 'row' }}>
                         <Field label="Status">
-                            <select name="status" value={formData.status} onChange={handleChange} style={{ ...inputStyle, cursor: 'pointer' }}>
+                            <select name="status" value={formData.status} onChange={handleChange} style={{ ...inputStyle, cursor: 'pointer', minHeight: isNarrow ? 48 : undefined }}>
                                 <option value="Applied">Applied</option>
                                 <option value="Assessment">Assessment</option>
                                 <option value="Interview">Interview</option>
@@ -90,22 +102,27 @@ export default function AddJobForm({ onAdd, onCancel }) {
                             </select>
                         </Field>
                         <Field label="Date">
-                            <input type="date" name="date" value={formData.date} onChange={handleChange} style={inputStyle}
+                            <input type="date" name="date" value={formData.date} onChange={handleChange} style={{ ...inputStyle, minHeight: isNarrow ? 48 : undefined }}
                                 onFocus={e => e.target.style.borderColor = BRAND}
                             onBlur={e => e.target.style.borderColor = '#d7e0ec'} />
                         </Field>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 10, marginTop: 8, justifyContent: 'flex-end' }}>
+                    <div style={{
+                        display: 'flex', gap: 10, marginTop: 8,
+                        justifyContent: 'flex-end', flexDirection: isNarrow ? 'column-reverse' : 'row',
+                    }}>
                         <button type="button" onClick={onCancel} style={{
                             background: 'transparent', border: '1px solid #d7e0ec',
-                            color: '#6a5f7e', padding: '10px 20px', borderRadius: 8,
-                            fontSize: 13, cursor: 'pointer', fontFamily: 'inherit'
+                            color: '#6a5f7e', padding: isNarrow ? '12px 20px' : '10px 20px', borderRadius: 8,
+                            fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', width: isNarrow ? '100%' : 'auto',
+                            minHeight: isNarrow ? 48 : undefined,
                         }}>Cancel</button>
                         <button type="submit" style={{
                             background: BRAND, border: 'none', color: '#fff',
-                            padding: '10px 24px', borderRadius: 8,
-                            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
+                            padding: isNarrow ? '12px 24px' : '10px 24px', borderRadius: 8,
+                            fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                            width: isNarrow ? '100%' : 'auto', minHeight: isNarrow ? 48 : undefined,
                         }}>Add application</button>
                     </div>
                 </form>

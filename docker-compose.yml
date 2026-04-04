@@ -56,6 +56,8 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
       APPLI_PUBLIC_URL: ${APPLI_PUBLIC_URL:-http://127.0.0.1:8766}
+      # Comma-separated origins allowed to call GET/PUT /api/jobs/bearer (Cloudflare Pages URL, etc.)
+      APPLI_CORS_ORIGINS: ${APPLI_CORS_ORIGINS:-}
       # Optional: GOOGLE_REDIRECT_URI must match Google Cloud exactly (defaults to APPLI_PUBLIC_URL/auth/callback)
       # Optional: APPLI_OLLAMA_MODEL, APPLI_OLLAMA_HOST
     volumes:

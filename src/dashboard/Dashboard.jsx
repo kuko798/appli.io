@@ -1,4 +1,6 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
+import { pullRemoteJobsMergeOnLogin, scheduleRemoteJobsPush, jobsApiBase } from './jobsSync.js';
+import { useMediaQuery } from './utils/useMediaQuery.js';
 import Stats from './components/Stats';
 import JobTable from './components/JobTable';
 import AddJobForm from './components/AddJobForm';
@@ -88,6 +90,7 @@ function Avatar({ email, pictureUrl }) {
 }
 
 export default function Dashboard() {
+  const isNarrow = useMediaQuery('(max-width: 900px)');
   const [jobs, setJobs] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showResumeOptimizer, setShowResumeOptimizer] = useState(false);
@@ -114,7 +117,10 @@ export default function Dashboard() {
     setIsAuthed(true);
     setUserEmail(email);
     setUserPicture(localStorage.getItem('appli_user_picture') || '');
-    loadJobs();
+    (async () => {
+      await pullRemoteJobsMergeOnLogin();
+      loadJobs();
+    })();
   }, []);
 
   useEffect(() => {
@@ -155,7 +161,10 @@ export default function Dashboard() {
   };
 
   const saveJobs = updated => {
-    chrome.storage.local.set({ jobs: updated }, () => setJobs(updated));
+    chrome.storage.local.set({ jobs: updated }, () => {
+      setJobs(updated);
+      scheduleRemoteJobsPush();
+    });
   };
 
   const handleUpdateJob = (id, updates) => {
@@ -187,6 +196,7 @@ export default function Dashboard() {
         setSyncStatus(msg.startsWith('Error') ? msg : 'Sync complete');
         setIsSyncing(false);
         loadJobs();
+        scheduleRemoteJobsPush();
         setTimeout(() => setSyncStatus(''), 4000);
       });
     };
@@ -243,28 +253,106 @@ export default function Dashboard() {
         position: 'sticky', top: 0, zIndex: 50,
         background: 'rgba(244,247,251,0.86)', backdropFilter: 'blur(16px)',
         borderBottom: `1px solid ${COLORS.border}`,
-        padding: '0 22px', height: 64,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+        padding: isNarrow
+          ? `max(8px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) 12px max(14px, env(safe-area-inset-left, 0px))`
+          : `0 max(22px, env(safe-area-inset-right, 0px)) 0 max(22px, env(safe-area-inset-left, 0px))`,
+        minHeight: isNarrow ? undefined : 64,
+        height: isNarrow ? 'auto' : 64,
+        display: 'flex',
+        flexDirection: isNarrow ? 'column' : 'row',
+        alignItems: isNarrow ? 'stretch' : 'center',
+        justifyContent: 'space-between',
+        gap: isNarrow ? 10 : 0,
       }}>
-        <Logo />
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          minHeight: isNarrow ? undefined : 64,
+        }}>
+          <Logo />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {syncStatus && (
-            <span style={{
-              fontSize: 12, color: isError ? '#f87171' : '#10b981',
-              background: isError ? '#f8717110' : '#10b98110',
-              border: `1px solid ${isError ? '#f8717130' : '#10b98130'}`,
-              padding: '5px 10px', borderRadius: 999, marginRight: 4
-            }}>{syncStatus}</span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {!isNarrow && syncStatus && (
+              <span style={{
+                fontSize: 12, color: isError ? '#f87171' : '#10b981',
+                background: isError ? '#f8717110' : '#10b98110',
+                border: `1px solid ${isError ? '#f8717130' : '#10b98130'}`,
+                padding: '5px 10px', borderRadius: 999, maxWidth: 280,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+              }}>{syncStatus}</span>
+            )}
 
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                aria-label="Account menu"
+                onClick={() => setShowUserMenu(v => !v)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 8, margin: -8,
+                  display: 'flex', alignItems: 'center', WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <Avatar email={userEmail} pictureUrl={userPicture} />
+              </button>
+              {showUserMenu && (
+                <>
+                  <div onClick={() => setShowUserMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div style={{
+                    position: 'absolute', top: 44, right: 0, zIndex: 50,
+                    background: COLORS.panelSoft, border: `1px solid ${COLORS.border}`,
+                    borderRadius: 12, padding: 8,                     minWidth: 200,
+                    maxWidth: 'min(280px, calc(100vw - 24px))',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.18)'
+                  }}>
+                    {userEmail && (
+                      <div style={{ padding: '8px 12px', marginBottom: 4 }}>
+                        <div style={{ fontSize: 11, color: COLORS.subtle, marginBottom: 2 }}>Signed in as</div>
+                        <div style={{ fontSize: 13, color: COLORS.muted, fontWeight: 500, wordBreak: 'break-all' }}>{userEmail}</div>
+                      </div>
+                    )}
+                    <div style={{ height: 1, background: COLORS.border, margin: '4px 0' }} />
+                    <button type="button" onClick={handleLogout} style={{
+                      width: '100%', textAlign: 'left', background: 'transparent',
+                      border: 'none', color: '#f87171', padding: '10px 12px',
+                      borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+                      minHeight: 44,
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f8717110'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >Sign out</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {isNarrow && syncStatus && (
+          <span style={{
+            fontSize: 12, color: isError ? '#f87171' : '#10b981',
+            background: isError ? '#f8717110' : '#10b98110',
+            border: `1px solid ${isError ? '#f8717130' : '#10b98130'}`,
+            padding: '8px 12px', borderRadius: 10,
+            display: 'block', lineHeight: 1.35, wordBreak: 'break-word',
+          }}>{syncStatus}</span>
+        )}
+
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8,
+          width: '100%', paddingBottom: isNarrow ? 2 : 0,
+        }}>
           <select
             value={syncRange}
             onChange={e => setSyncRange(e.target.value)}
+            aria-label="Gmail sync range"
             style={{
               background: COLORS.panelSoft, border: `1px solid ${COLORS.border}`,
-              color: COLORS.muted, padding: '7px 11px', borderRadius: 8,
-              fontSize: 13, cursor: 'pointer', outline: 'none', fontFamily: 'inherit'
+              color: COLORS.muted, padding: isNarrow ? '10px 12px' : '7px 11px', borderRadius: 8,
+              fontSize: 13, cursor: 'pointer', outline: 'none', fontFamily: 'inherit',
+              flex: isNarrow ? '1 1 auto' : 'none', minWidth: isNarrow ? 120 : undefined,
+              minHeight: isNarrow ? 44 : undefined,
             }}
           >
             <option value="1m">30 days</option>
@@ -273,22 +361,38 @@ export default function Dashboard() {
             <option value="1y">1 year</option>
           </select>
 
-          <button onClick={() => setShowResumeOptimizer(true)} style={ghostBtn}>
-            Resume optimizer
-          </button>
+          {!isNarrow && (
+            <button type="button" onClick={() => setShowResumeOptimizer(true)} style={ghostBtn}>
+              Resume optimizer
+            </button>
+          )}
 
-          <button onClick={() => setShowAddForm(true)} style={primaryBtn}>
+          <button type="button" onClick={() => setShowAddForm(true)} style={{
+            ...primaryBtn,
+            padding: isNarrow ? '10px 16px' : primaryBtn.padding,
+            minHeight: isNarrow ? 44 : undefined,
+            flex: isNarrow ? '1 1 auto' : 'none',
+          }}>
             Add job
           </button>
 
-          <button onClick={handleGmailSync} disabled={isSyncing} style={{
-            background: isSyncing ? '#c8b4eb' : BRAND,
-            border: 'none', color: '#fff',
-            padding: '8px 16px', borderRadius: 8,
-            fontSize: 13, fontWeight: 600, cursor: isSyncing ? 'not-allowed' : 'pointer',
-            fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
-            opacity: isSyncing ? 0.7 : 1, transition: 'all 0.15s'
-          }}>
+          <button
+            type="button"
+            title={jobsApiBase() ? 'Jobs sync to your account across devices.' : 'Jobs stay on this browser unless VITE_JOBS_API_BASE + CORS are configured on the server.'}
+            onClick={handleGmailSync}
+            disabled={isSyncing}
+            style={{
+              background: isSyncing ? '#c8b4eb' : BRAND,
+              border: 'none', color: '#fff',
+              padding: isNarrow ? '10px 16px' : '8px 16px', borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: isSyncing ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              opacity: isSyncing ? 0.7 : 1, transition: 'all 0.15s',
+              minHeight: isNarrow ? 44 : undefined,
+              flex: isNarrow ? '1 1 100%' : 'none',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
             {isSyncing ? (
               <>
                 <svg width="12" height="12" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
@@ -298,68 +402,33 @@ export default function Dashboard() {
               </>
             ) : 'Sync Gmail'}
           </button>
-
-          {/* User menu */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowUserMenu(v => !v)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 8 }}
-            >
-              <Avatar email={userEmail} pictureUrl={userPicture} />
-            </button>
-            {showUserMenu && (
-              <>
-                <div onClick={() => setShowUserMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                <div style={{
-                  position: 'absolute', top: 42, right: 0, zIndex: 50,
-                  background: COLORS.panelSoft, border: `1px solid ${COLORS.border}`,
-                  borderRadius: 12, padding: 8, minWidth: 220,
-                  boxShadow: '0 12px 40px rgba(0,0,0,0.4)'
-                }}>
-                  {userEmail && (
-                    <div style={{ padding: '8px 12px', marginBottom: 4 }}>
-                      <div style={{ fontSize: 11, color: COLORS.subtle, marginBottom: 2 }}>Signed in as</div>
-                      <div style={{ fontSize: 13, color: COLORS.muted, fontWeight: 500, wordBreak: 'break-all' }}>{userEmail}</div>
-                    </div>
-                  )}
-                  <div style={{ height: 1, background: COLORS.border, margin: '4px 0' }} />
-                  <button onClick={handleLogout} style={{
-                    width: '100%', textAlign: 'left', background: 'transparent',
-                    border: 'none', color: '#f87171', padding: '8px 12px',
-                    borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit'
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f8717110'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >Sign out</button>
-                </div>
-              </>
-            )}
-          </div>
         </div>
       </header>
 
       <main style={{
         maxWidth: 1320,
         margin: '0 auto',
-        padding: '24px 22px 80px'
+        padding: isNarrow
+          ? `16px max(14px, env(safe-area-inset-left, 0px)) max(80px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-right, 0px))`
+          : `24px max(22px, env(safe-area-inset-left, 0px)) 80px max(22px, env(safe-area-inset-right, 0px))`
       }}>
         <div style={{
           background: COLORS.panel,
           border: `1px solid ${COLORS.border}`,
           borderRadius: 16,
-          padding: '18px 20px',
+          padding: isNarrow ? '16px 16px' : '18px 20px',
           marginBottom: 14
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isNarrow ? 'flex-start' : 'center', gap: 14, flexWrap: 'wrap', flexDirection: isNarrow ? 'column' : 'row' }}>
             <div>
-              <h1 style={{ fontSize: 22, margin: 0 }}>Application Command Center</h1>
-              <p style={{ fontSize: 13, color: COLORS.subtle, margin: '4px 0 0' }}>
+              <h1 style={{ fontSize: isNarrow ? 19 : 22, margin: 0, lineHeight: 1.2 }}>Application Command Center</h1>
+              <p style={{ fontSize: 13, color: COLORS.subtle, margin: '6px 0 0' }}>
                 Clean pipeline tracking with AI support tools.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button style={ghostBtn} onClick={() => setShowResumeOptimizer(true)}>Resume optimizer</button>
-              <button style={primaryBtn} onClick={() => setShowAddForm(true)}>Add application</button>
+            <div style={{ display: 'flex', gap: 8, width: isNarrow ? '100%' : 'auto', flexDirection: isNarrow ? 'column' : 'row' }}>
+              <button type="button" style={{ ...ghostBtn, width: isNarrow ? '100%' : 'auto', minHeight: isNarrow ? 44 : undefined, padding: isNarrow ? '11px 14px' : ghostBtn.padding }} onClick={() => setShowResumeOptimizer(true)}>Resume optimizer</button>
+              <button type="button" style={{ ...primaryBtn, width: isNarrow ? '100%' : 'auto', minHeight: isNarrow ? 44 : undefined, padding: isNarrow ? '11px 14px' : primaryBtn.padding }} onClick={() => setShowAddForm(true)}>Add application</button>
             </div>
           </div>
         </div>

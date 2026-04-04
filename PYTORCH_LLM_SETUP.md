@@ -1,6 +1,6 @@
 # Local LLM with PyTorch (Transformers)
 
-Appli.io’s extension calls an **OpenAI-compatible** `POST /v1/chat/completions` endpoint for interview simulator, company intel, resume JSON tools, etc. This repo includes **`pytorch_chat_server`**, which serves that API using **Hugging Face Transformers + PyTorch** (no vLLM).
+Appli.io’s **web dashboard** calls an **OpenAI-compatible** `POST /v1/chat/completions` endpoint for interview simulator, company intel, resume tools, etc. This repo includes **`pytorch_chat_server`**, which serves that API using **Hugging Face Transformers + PyTorch** (no vLLM).
 
 ## 1) Install
 
@@ -28,9 +28,9 @@ Optional environment:
 | `APPLI_PYTORCH_API_KEY` | If set, clients must send `Authorization: Bearer …` |
 | `HF_TOKEN` | For gated models |
 
-## 3) Extension options
+## 3) App configuration (LLM base URL)
 
-- **Base URL:** `http://localhost:8000` for the packaged extension. **Vite dev dashboard** (port 5173) defaults to the proxy `http://localhost:5173/appli-llm` → same server on port 8000.
+- **Base URL:** `http://localhost:8000` when you open the chat API directly. **Vite dev** (port 5173) defaults to the proxy `http://localhost:5173/appli-llm` → the same server on port 8000.
 - **Model name:** exactly the same string as `APPLI_PYTORCH_MODEL` (default `Qwen/Qwen2.5-1.5B-Instruct`)
 - **API key:** blank unless you set `APPLI_PYTORCH_API_KEY`
 

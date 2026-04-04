@@ -10,6 +10,8 @@ Environment:
   SESSION_SECRET         required for production (random string)
   APPLI_PUBLIC_URL       default http://127.0.0.1:8766
   GOOGLE_REDIRECT_URI    optional override (must match Console exactly)
+  APPLI_WEBAPP_HOST      bind address (default 127.0.0.1; use 0.0.0.0 in Docker)
+  APPLI_CORS_ORIGINS     comma-separated origins for /api/jobs/bearer (e.g. https://app.pages.dev)
   APPLI_OLLAMA_MODEL     optional, e.g. llama3.2 — local Ollama for smarter labels
   APPLI_OLLAMA_HOST      default http://127.0.0.1:11434
 
@@ -20,10 +22,14 @@ Run:
 """
 from __future__ import annotations
 
+import json
 import os
+import urllib.error
+import urllib.request
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.oauth2.credentials import Credentials
@@ -40,11 +46,22 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
 PUBLIC_URL = os.environ.get("APPLI_PUBLIC_URL", "http://127.0.0.1:8766").rstrip("/")
-REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", f"{PUBLIC_URL}/auth/callback")
+_goog_redir = os.environ.get("GOOGLE_REDIRECT_URI", "").strip()
+REDIRECT_URI = (_goog_redir if _goog_redir else f"{PUBLIC_URL}/auth/callback").rstrip("/")
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "dev-insecure-change-me")
 
 app = FastAPI(title="Appli.io Web")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax")
+
+_cors_origins = os.environ.get("APPLI_CORS_ORIGINS", "").strip()
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[o.strip() for o in _cors_origins.split(",") if o.strip()],
+        allow_credentials=False,
+        allow_methods=["GET", "PUT", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
 
 
 def _client_config() -> dict:
@@ -91,6 +108,33 @@ def get_credentials(request: Request) -> Credentials:
         c.refresh(GoogleAuthRequest())
         request.session["token"] = c.token
     return c
+
+
+def _email_from_access_token(authorization: str | None) -> str:
+    """Resolve Gmail user email from a GIS access token (mobile / static dashboard)."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(401, "Missing or invalid Authorization header")
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(401, "Empty Bearer token")
+    try:
+        req = urllib.request.Request(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            payload = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        raise HTTPException(401, f"Token rejected ({e.code})") from e
+    except Exception as exc:
+        raise HTTPException(401, "Could not verify access token") from exc
+    email = (payload.get("email") or "").strip()
+    if not email:
+        raise HTTPException(
+            401,
+            "Access token has no email — add userinfo.email scope in Google Identity Services.",
+        )
+    return email
 
 
 def ensure_user_email(request: Request, creds: Credentials) -> str:
@@ -178,6 +222,27 @@ def api_jobs(request: Request):
     return {"jobs": storage.load_jobs(email)}
 
 
+@app.get("/api/jobs/bearer")
+def api_jobs_bearer(authorization: str | None = Header(None)):
+    """Same as /api/jobs but for the static dashboard (Bearer = GIS access token)."""
+    email = _email_from_access_token(authorization)
+    return {"jobs": storage.load_jobs(email)}
+
+
+@app.put("/api/jobs/bearer")
+async def api_jobs_bearer_put(request: Request, authorization: str | None = Header(None)):
+    email = _email_from_access_token(authorization)
+    try:
+        raw = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body") from None
+    jobs = raw.get("jobs") if isinstance(raw, dict) else None
+    if not isinstance(jobs, list):
+        raise HTTPException(400, 'Body must be JSON object with "jobs" array')
+    storage.save_jobs(email, jobs)
+    return {"ok": True}
+
+
 @app.post("/api/sync")
 async def api_sync(request: Request):
     try:
@@ -196,4 +261,5 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.environ.get("PORT", "8766"))
-    uvicorn.run("main:app", host="127.0.0.1", port=port, reload=False)
+    host = os.environ.get("APPLI_WEBAPP_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    uvicorn.run("main:app", host=host, port=port, reload=False)

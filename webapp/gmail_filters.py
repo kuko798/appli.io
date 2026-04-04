@@ -1,4 +1,4 @@
-"""Pre-filters aligned with extension gmailService.js."""
+"""Pre-filters aligned with src/services/gmailService.js."""
 from __future__ import annotations
 
 import re

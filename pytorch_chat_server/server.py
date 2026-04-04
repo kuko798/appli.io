@@ -1,7 +1,7 @@
 """
 OpenAI-compatible HTTP API backed by Hugging Face Transformers + PyTorch.
 
-Used by the extension's LocalLLM.generate / generateJSON (POST /v1/chat/completions).
+Used by the web dashboard (LocalLLM.generate / generateJSON) — POST /v1/chat/completions.
 
 Env:
   APPLI_PYTORCH_MODEL   Hugging Face model id (default: Qwen/Qwen2.5-1.5B-Instruct)
@@ -10,7 +10,8 @@ Env:
   APPLI_PYTORCH_API_KEY If set, require Authorization: Bearer <key>
   HF_TOKEN              Optional, for gated models
   APPLI_PYTORCH_SDPA    1 (default) use PyTorch SDPA attention when supported; 0 to disable
-  APPLI_PYTORCH_MAX_INPUT_TOKENS  Max prompt tokens (default 8192); longer prompts are tail-truncated
+  APPLI_PYTORCH_MAX_INPUT_TOKENS  Max prompt tokens (default 24576); longer prompts are tail-truncated
+  APPLI_PYTORCH_MAX_NEW_TOKENS    Max completion tokens per request (default 12288)
 """
 
 from __future__ import annotations
@@ -118,7 +119,7 @@ class ChatCompletionBody(BaseModel):
     model: str = ""
     messages: list[ChatMessage]
     temperature: float = 0.7
-    max_tokens: int = Field(default=2048, ge=1, le=8192)
+    max_tokens: int = Field(default=2048, ge=1, le=12288)
     stream: bool = False
     response_format: dict | None = None
 
@@ -161,7 +162,7 @@ def _generate_blocking(body: ChatCompletionBody) -> str:
         raise ValueError(f"Chat template error: {e}") from e
 
     raw = _tokenizer(prompt, return_tensors="pt")
-    max_in = int(os.environ.get("APPLI_PYTORCH_MAX_INPUT_TOKENS", "8192"))
+    max_in = int(os.environ.get("APPLI_PYTORCH_MAX_INPUT_TOKENS", "24576"))
     input_ids = raw["input_ids"]
     attn = raw.get("attention_mask")
     if input_ids.shape[1] > max_in:
@@ -180,7 +181,8 @@ def _generate_blocking(body: ChatCompletionBody) -> str:
         raise ValueError(
             f"Prompt too long ({in_len} tokens, max context ~{max_pos}). Shorten the resume or raise APPLI_PYTORCH_MAX_INPUT_TOKENS."
         )
-    max_new = min(int(body.max_tokens), 8192, room)
+    max_new_cap = int(os.environ.get("APPLI_PYTORCH_MAX_NEW_TOKENS", "12288"))
+    max_new = min(int(body.max_tokens), max_new_cap, room)
 
     gen_kwargs = {
         "max_new_tokens": max_new,

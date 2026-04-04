@@ -1,4 +1,4 @@
-"""Gmail list + classify pipeline (extension parity)."""
+"""Gmail list + classify pipeline (same behavior as the dashboard sync)."""
 from __future__ import annotations
 
 import time

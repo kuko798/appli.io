@@ -1,9 +1,11 @@
 """
-Classifier API for the Chrome extension (optional). Full web + Gmail OAuth: see ../webapp/.
+Classifier API for the web app (Gmail sync / email labels). Optional Gmail OAuth server: see ../webapp/.
 
 Run:
   pip install -r requirements.txt
   python service.py
+
+Bind (e.g. Docker): APPLI_CLASSIFIER_HOST=0.0.0.0 APPLI_CLASSIFIER_PORT=8765
 
 Optional Hugging Face Inference (hosted models via huggingface_hub):
   set APPLI_HF_MODEL=meta-llama/Llama-3.2-3B-Instruct
@@ -165,4 +167,5 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.environ.get("APPLI_CLASSIFIER_PORT", "8765"))
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    host = os.environ.get("APPLI_CLASSIFIER_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    uvicorn.run(app, host=host, port=port)

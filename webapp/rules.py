@@ -1,5 +1,5 @@
 """
-High-precision rule engine for recruiting email labels (ported from extension classifier.js).
+High-precision rule engine for recruiting email labels (aligned with the dashboard classifier).
 """
 from __future__ import annotations
 

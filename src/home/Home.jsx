@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useMediaQuery } from '../dashboard/utils/useMediaQuery.js';
 
 const BRAND = '#8e5be8';
 const LOGO_PURPLE = '#8e5be8';
@@ -153,6 +154,8 @@ function HeroPanel() {
 }
 
 export default function Home() {
+  const isNarrow = useMediaQuery('(max-width: 900px)');
+  const isCompact = useMediaQuery('(max-width: 560px)');
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [billingMode, setBillingMode] = useState('monthly');
   const proPrice = billingMode === 'monthly' ? '$9.99' : '$95';
@@ -169,20 +172,30 @@ export default function Home() {
       color: COLORS.text
     }}>
       <nav style={{
-        position: 'sticky', top: 0, zIndex: 100, height: 68, padding: '0 28px',
+        position: 'sticky', top: 0, zIndex: 100,
+        minHeight: isCompact ? undefined : 68,
+        padding: isCompact
+          ? `max(10px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px))`
+          : '0 max(28px, env(safe-area-inset-right, 0px)) 0 max(28px, env(safe-area-inset-left, 0px))',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 12,
         background: 'rgba(244,247,251,0.9)', borderBottom: `1px solid ${COLORS.border}`,
         backdropFilter: 'blur(12px)'
       }}>
         <Logo />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={handleSignIn} style={btnGhost}>Sign in</button>
-          <button onClick={handleSignIn} style={btnPrimary}>Open dashboard</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: isCompact ? '100%' : 'auto' }}>
+          <button type="button" onClick={handleSignIn} style={{ ...btnGhost, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Sign in</button>
+          <button type="button" onClick={handleSignIn} style={{ ...btnPrimary, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Open dashboard</button>
         </div>
       </nav>
 
-      <section style={{ maxWidth: 1220, margin: '0 auto', padding: '56px 28px 22px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 24, alignItems: 'start' }}>
+      <section style={{ maxWidth: 1220, margin: '0 auto', padding: isCompact ? '32px 16px 18px' : '56px 28px 22px' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isNarrow ? '1fr' : '1.1fr 0.9fr',
+          gap: isNarrow ? 20 : 24,
+          alignItems: 'start'
+        }}>
           <div>
             <div style={{
               display: 'inline-block',
@@ -196,17 +209,17 @@ export default function Home() {
             }}>
               Purpose-built for high-volume job searches
             </div>
-            <h1 style={{ margin: 0, fontSize: 'clamp(40px,5vw,72px)', lineHeight: 1.02, letterSpacing: '-1.6px' }}>
+            <h1 style={{ margin: 0, fontSize: isCompact ? 'clamp(32px, 9vw, 48px)' : 'clamp(40px,5vw,72px)', lineHeight: 1.02, letterSpacing: '-1.6px' }}>
               Reliable workflow
               <br />
               for every application
             </h1>
-            <p style={{ margin: '16px 0 0', color: COLORS.muted, fontSize: 18, maxWidth: 680, lineHeight: 1.6 }}>
+            <p style={{ margin: '16px 0 0', color: COLORS.muted, fontSize: isCompact ? 16 : 18, maxWidth: 680, lineHeight: 1.6 }}>
               Appli.io combines inbox intelligence, pipeline visibility, and AI execution tools so you can operate your job search with precision.
             </p>
-            <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
-              <button onClick={handleSignIn} style={{ ...btnPrimary, padding: '11px 18px' }}>Start free</button>
-              <button onClick={() => setShowWaitlist(true)} style={{ ...btnGhost, padding: '11px 18px' }}>Join Pro waitlist</button>
+            <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap', flexDirection: isCompact ? 'column' : 'row' }}>
+              <button type="button" onClick={handleSignIn} style={{ ...btnPrimary, padding: '11px 18px', width: isCompact ? '100%' : 'auto', minHeight: isCompact ? 48 : undefined }}>Start free</button>
+              <button type="button" onClick={() => setShowWaitlist(true)} style={{ ...btnGhost, padding: '11px 18px', width: isCompact ? '100%' : 'auto', minHeight: isCompact ? 48 : undefined }}>Join Pro waitlist</button>
             </div>
           </div>
           <HeroPanel />
@@ -221,23 +234,23 @@ export default function Home() {
         </div>
       </section>
 
-      <section style={{ maxWidth: 1220, margin: '0 auto', padding: '36px 28px 24px', display: 'grid', gap: 14 }}>
+      <section style={{ maxWidth: 1220, margin: '0 auto', padding: isCompact ? '28px 16px 20px' : '36px 28px 24px', display: 'grid', gap: 14 }}>
         {capabilities.map((item, idx) => (
           <div key={item.title} style={{
             background: COLORS.panel,
             border: `1px solid ${COLORS.border}`,
             borderRadius: 16,
-            padding: 22,
+            padding: isCompact ? 18 : 22,
             display: 'grid',
-            gridTemplateColumns: idx % 2 === 0 ? '1fr 1fr' : '1fr 1fr',
+            gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr',
             gap: 16
           }}>
-            <div style={{ order: idx % 2 === 0 ? 0 : 1 }}>
+            <div style={{ order: isNarrow ? 0 : (idx % 2 === 0 ? 0 : 1) }}>
               <div style={{ color: '#7a6c92', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{item.tag}</div>
-              <h3 style={{ margin: 0, fontSize: 28, letterSpacing: '-0.4px' }}>{item.title}</h3>
+              <h3 style={{ margin: 0, fontSize: isCompact ? 22 : 28, letterSpacing: '-0.4px' }}>{item.title}</h3>
               <p style={{ margin: '10px 0 0', color: COLORS.muted, lineHeight: 1.6 }}>{item.desc}</p>
             </div>
-            <div style={{ order: idx % 2 === 0 ? 1 : 0, background: COLORS.panelSoft, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 14 }}>
+            <div style={{ order: isNarrow ? 1 : (idx % 2 === 0 ? 1 : 0), background: COLORS.panelSoft, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 14 }}>
               {item.bullets.map(b => (
                 <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 0', borderBottom: `1px solid ${COLORS.border}` }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: BRAND, flexShrink: 0 }} />
@@ -297,7 +310,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: 12 }}>
             <div style={{ background: '#ffffff', border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18 }}>
               <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: COLORS.subtle }}>Free</div>
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -352,8 +365,13 @@ export default function Home() {
       </section>
 
       <footer style={{
-        borderTop: `1px solid ${COLORS.border}`, padding: '18px 28px 26px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+        borderTop: `1px solid ${COLORS.border}`,
+        padding: isCompact
+          ? `18px max(16px, env(safe-area-inset-left)) calc(26px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-right))`
+          : '18px 28px 26px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexDirection: isCompact ? 'column' : 'row', gap: isCompact ? 12 : 0,
+        textAlign: isCompact ? 'center' : 'left'
       }}>
         <Logo size={22} />
         <span style={{ fontSize: 12, color: COLORS.subtle }}>© 2026 Appli.io</span>

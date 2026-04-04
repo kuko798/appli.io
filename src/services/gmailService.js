@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 /** Gmail sync + classification for the web dashboard (and optional MV3 notifications when `chrome.notifications` exists). */
+import { scheduleRemoteJobsPush } from '../dashboard/jobsSync.js';
 import LocalLLM from '../background/localLLM.js';
 import Classifier from '../background/classifier.js';
 
@@ -252,6 +253,7 @@ export const gmailService = {
             if (this.getStatusPriority(newJob.status) > this.getStatusPriority(oldJob.status)) {
                 jobs[idIndex] = { ...oldJob, ...newJob };
                 await new Promise((resolve) => chrome.storage.local.set({ jobs }, resolve));
+                scheduleRemoteJobsPush();
             }
             return;
         }
@@ -266,12 +268,14 @@ export const gmailService = {
             if (this.getStatusPriority(newJob.status) > this.getStatusPriority(oldJob.status)) {
                 jobs[similarIndex] = { ...oldJob, status: newJob.status, lastUpdated: newJob.lastUpdated };
                 await new Promise((resolve) => chrome.storage.local.set({ jobs }, resolve));
+                scheduleRemoteJobsPush();
             }
             return;
         }
 
         jobs.push(newJob);
         await new Promise((resolve) => chrome.storage.local.set({ jobs }, resolve));
+        scheduleRemoteJobsPush();
     },
 
     async updateExistingStatusWithoutRole({ messageId, subject, company, status, date }) {
@@ -321,6 +325,7 @@ export const gmailService = {
             lastUpdated: new Date().toISOString()
         };
         await new Promise((resolve) => chrome.storage.local.set({ jobs }, resolve));
+        scheduleRemoteJobsPush();
         return true;
     },
 
