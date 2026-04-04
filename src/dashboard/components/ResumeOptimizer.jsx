@@ -3,10 +3,22 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import mammoth from 'mammoth';
 import LocalLLM from '../../background/localLLM.js';
+import {
+    buildReportDataFromCritiqueJson,
+    cleanOptimizedOutput,
+    enforceCritiqueBulletCoverage,
+    formatJdKeywordHintsForPrompt,
+    formatSegmentedBlocksForCritiquePrompt,
+    llmErrorMessage,
+    scoreColor,
+    sliceForCritiquePrompt,
+    sliceForOptimizePrompt,
+    wordCount,
+} from '../utils/resumeOptimizerUtils.js';
 
 /**
- * Mock chrome.runtime.getURL('assets/...') returns a relative path, which breaks PDF.js
- * on Vite dev (worker 404 under /src/dashboard/). Real extension: full chrome-extension:// URL.
+ * Prefer `chrome.runtime.getURL` when present (absolute worker URL). The web shim returns a relative path,
+ * so we fall back to Vite’s bundled `pdf.worker` URL to avoid 404s under /src/dashboard/.
  */
 function resolvePdfWorkerSrc() {
     try {
@@ -26,113 +38,13 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = resolvePdfWorkerSrc();
 
 const BRAND = '#8e5be8';
 
-const scoreColor = (r) => (r >= 8 ? '#10b981' : r >= 5 ? '#f59e0b' : '#f87171');
-
-/** Diagnosis summary cards — domain-agnostic labels (any profession). */
-const SUMMARY_CARD_LABELS = {
-    structural_integrity: 'Structure & layout',
-    signal_strength: 'Overall signal',
-    impact_specificity: 'Impact & specificity',
-    tech_arity: 'Impact & specificity',
-};
-
 const OPEN_SOURCE_REFERENCES = [
+    { name: 'Resume Matcher', desc: 'JD keyword alignment, truthful tailoring, anti-AI-buzzword polish patterns', url: 'https://github.com/srbhr/Resume-Matcher' },
     { name: 'HR-Breaker', desc: 'Job-specific optimization, ATS-style checks, anti-hallucination loop', url: 'https://github.com/btseytlin/hr-breaker' },
     { name: 'JadeAI', desc: 'JD match analysis, templates, multi-format resume tooling', url: 'https://github.com/twwch/JadeAI' },
     { name: 'ATSResume', desc: 'ATS-oriented resume structure and scoring mindset', url: 'https://github.com/sauravhathi/atsresume' },
     { name: 'JobHuntr (Ollama agent)', desc: 'End-to-end apply workflows and resume iteration patterns', url: 'https://github.com/lookr-fyi/job-application-bot-by-ollama-ai' },
 ];
-
-function stripCodeFences(text) {
-    let t = (text || '').trim();
-    t = t.replace(/^```(?:plaintext|text)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return t;
-}
-
-/** Consumer / big-tech names that are not resume skills — models sometimes keep OCR/paste noise. */
-const SKILL_JUNK_BRANDS = [
-    'Apple',
-    'Google',
-    'TikTok',
-    'OpenAI',
-    'Meta',
-    'NVIDIA',
-    'Salesforce',
-    'Amazon',
-    'Netflix',
-    'Spotify',
-];
-
-function countJunkBrandHits(line) {
-    let n = 0;
-    for (const w of SKILL_JUNK_BRANDS) {
-        if (new RegExp(`\\b${w}\\b`, 'i').test(line)) n += 1;
-    }
-    return n;
-}
-
-/** Drop standalone lines that are mostly junk brand names (not Programming:/Tools: rows or bullets). */
-function stripConsumerBrandSkillNoise(text) {
-    const lines = (text || '').split('\n');
-    const out = [];
-    for (const line of lines) {
-        const t = line.trim();
-        if (!t) {
-            out.push(line);
-            continue;
-        }
-        if (/^(Programming|Tools)\s*:/i.test(t) || t.startsWith('•')) {
-            out.push(line);
-            continue;
-        }
-        const hits = countJunkBrandHits(t);
-        if (hits >= 3 && !t.includes(':')) {
-            continue;
-        }
-        out.push(line);
-    }
-    return out.join('\n');
-}
-
-function collapseExcessBlankLines(text) {
-    return (text || '')
-        .replace(/\n{4,}/g, '\n\n\n')
-        .replace(/[ \t]+\n/g, '\n')
-        .trim();
-}
-
-function cleanOptimizedOutput(raw) {
-    let t = stripCodeFences(raw);
-    t = stripConsumerBrandSkillNoise(t);
-    t = collapseExcessBlankLines(t);
-    return t;
-}
-
-function wordCount(s) {
-    return (s || '').trim().split(/\s+/).filter(Boolean).length;
-}
-
-/** Surface FastAPI `detail` from failed LLM responses (status on err from LocalLLM). */
-function llmErrorMessage(err) {
-    let m = err?.message || 'Request failed';
-    const raw = err?.responseText;
-    if (raw && typeof raw === 'string') {
-        try {
-            const j = JSON.parse(raw);
-            if (typeof j.detail === 'string') return j.detail;
-            if (Array.isArray(j.detail)) {
-                const parts = j.detail.map((d) => (typeof d === 'object' && d?.msg ? d.msg : String(d)));
-                if (parts.length) return parts.join('; ');
-            }
-        } catch {
-            if (raw.length < 400) m = raw;
-        }
-    }
-    if (err?.status === 500) {
-        m = `${m} If the LLM is local, check the terminal running pytorch_chat_server for errors.`;
-    }
-    return m;
-}
 
 export default function ResumeOptimizer({ onCancel }) {
     const [view, setView] = useState('input');
@@ -244,88 +156,79 @@ export default function ResumeOptimizer({ onCancel }) {
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = setInterval(() => setElapsedMs((ms) => ms + 1000), 1000);
 
-        const labels = mode === 'diagnose' ? diagnoseSteps : optimizeSteps;
+        const labels = diagnoseSteps;
         let i = 0;
+        // Faster step cadence so we reach the LLM call sooner
         const interval = setInterval(() => {
             if (i < labels.length) {
                 setScanSteps((prev) => [...prev, labels[i++]]);
+                setProgress(Math.round(((i) / (labels.length + 1)) * 70));
                 scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
             } else {
                 clearInterval(interval);
-                if (mode === 'diagnose') fetchCritique();
-                else fetchOptimizedResume();
+                fetchCritique();
             }
-        }, 240);
-    };
-
-    const normalizeKeys = (obj) => {
-        if (Array.isArray(obj)) return obj.map(normalizeKeys);
-        if (obj && typeof obj === 'object') {
-            return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k.toLowerCase(), normalizeKeys(v)]));
-        }
-        return obj;
+        }, 160);
     };
 
     const fetchCritique = async () => {
-        setScanSteps((prev) => [
-            ...prev,
-            'Calling your local LLM — on CPU this can take several minutes. Leave this tab open; the bar moves to 100% only when the response is back.',
-        ]);
+        setProgress(72);
         try {
-            const truncated = resumeText.trim().slice(0, 2500);
-            const prompt = `Resume reviewer for ANY profession (healthcare, education, sales, trades, engineering, public sector, etc.). Return ONLY valid JSON, no markdown.
+            // Drop contact/education/skills; keep experience + leadership up to RESUME_CRITIQUE_CHAR_LIMIT
+            const truncated = sliceForCritiquePrompt(resumeText);
+            const { text: resumeForModel, blockCount } = formatSegmentedBlocksForCritiquePrompt(truncated);
+            const jdSlice = jobDescription.trim().slice(0, 1200);
+            const jdBlock = jdSlice
+                ? `\nJob target (flag honest keyword gaps only; never invent facts):\n${jdSlice}\n`
+                : '';
+            const blockRule =
+                blockCount > 1
+                    ? `The resume is split into ${blockCount} JOB_BLOCKs (marked with >>>). Your "experiences" array MUST contain exactly ${blockCount} objects — one per JOB_BLOCK, in the same order. Use the [HINT] label in each block header as the role_at_company value. NEVER merge two blocks or skip a block.\n\n`
+                    : '';
+            // Count bullets across the whole resume to size maxTokens accurately
+            const totalBullets = (resumeForModel.match(/^[•\-\*]\s/gm) || []).length || 15;
+            // Each bullet in JSON ≈ 120 tokens (original text + rating + critique + 2 suggestions)
+            const neededTokens = Math.min(12000, 1400 + totalBullets * 220 + blockCount * 140);
 
-From the resume, pick the 3 most important work experience roles. For each role pick up to 3 bullets that most need improvement (or are strongest contrasts).
+            const prompt = `Resume reviewer. Return ONLY valid JSON, no markdown.
 
-Scoring: rating 1-10. Weak verbs or vague duties=<=5. Concrete scope, outcomes, or credible metrics=>=7. Metrics must match the field (patients seen, revenue, students, cases, tickets, etc.) — do not assume software.
+${blockRule}REQUIRED: your "experiences" array must have exactly ${blockCount} objects (one per JOB_BLOCK). Each object's "analysis" array must contain ALL bullets from that block — every single bullet, none skipped.
 
-Critique: max 15 words. Suggestions: 2 alternative phrasings, max 12 words each; only use X%/N+ if the source bullet supports numbers or you keep them clearly as placeholders the candidate should verify.
+SCORING (integers only):
+- 9-10: concrete outcome + specific scope/metric (strong and credible impact)
+- 7-8: clear action + useful specificity, but impact depth is moderate
+- 4-6: understandable action, limited scope/outcome detail
+- 1-3: generic responsibility language, little to no concrete detail
+- Use the full 1-10 scale honestly; do not cluster all bullets at the same score.
+- If bullet quality differs, scores must differ.
 
+CRITIQUE RULES:
+- Write 10–18 words of specific advice on what would make this bullet stronger
+- Do NOT describe why the score is what it is (never write "Contains a metric" or "Has a number")
+- Do NOT say "add company name", "add more context", or "add detail" without saying exactly what detail
+- Each critique must be different — never repeat the same sentence across bullets
+
+SUGGESTIONS: 2 rewrites per bullet, max 18 words each, using only facts from the bullet. Do not invent new numbers.
+
+role_at_company: use the [HINT] value exactly if provided. Otherwise: title from line 2 (strip trailing "City, ST") + ", " + company from line 1 (strip date range).
+${jdBlock}
 Resume:
-${truncated}
+${resumeForModel}
 
 JSON:
-{"summary":{"structural_integrity":{"rating":0,"advice":""},"signal_strength":{"rating":0,"advice":""},"impact_specificity":{"rating":0,"advice":""}},"experiences":[{"role_at_company":"Role, Company","analysis":[{"original_bullet":"text","rating":0,"critique":"","suggestions":["s1","s2"]}]}],"upgrade_path":["tip1","tip2","tip3"]}`;
+{"summary":{"structural_integrity":{"rating":6,"advice":"sentence"},"signal_strength":{"rating":8,"advice":"sentence"},"impact_specificity":{"rating":5,"advice":"sentence"}},"experiences":[{"role_at_company":"Title, Company","analysis":[{"original_bullet":"bullet text","rating":4,"critique":"advice","suggestions":["rewrite1","rewrite2"]}]}],"upgrade_path":["tip1","tip2","tip3"]}`;
 
             const json = await LocalLLM.generateJSON({
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.2,
-                maxTokens: 1024,
+                maxTokens: neededTokens,
             });
             setProgress(100);
             if (timerRef.current) clearInterval(timerRef.current);
 
-            const raw = normalizeKeys(json);
-            const toScore = (v) =>
-                v && typeof v === 'object'
-                    ? { rating: Number(v.rating) || 0, advice: v.advice || '' }
-                    : { rating: 0, advice: '' };
-            const summary = raw.summary || {};
-            const experiences = (raw.experiences || [])
-                .map((exp) => ({
-                    role_at_company: exp.role_at_company || 'Experience',
-                    analysis: (exp.analysis || [])
-                        .map((a) => ({
-                            original_bullet: a.original_bullet || '',
-                            rating: Number(a.rating) || 0,
-                            critique: a.critique || '',
-                            suggestions: Array.isArray(a.suggestions) ? a.suggestions.filter(Boolean) : [],
-                        }))
-                        .filter((a) => a.original_bullet),
-                }))
-                .filter((exp) => exp.analysis.length > 0);
-
-            const impactSpec = summary.impact_specificity ?? summary.tech_arity;
-            setReportData({
-                summary: {
-                    structural_integrity: toScore(summary.structural_integrity),
-                    signal_strength: toScore(summary.signal_strength),
-                    impact_specificity: toScore(impactSpec),
-                },
-                experiences,
-                upgrade_path: (raw.upgrade_path || []).filter(Boolean),
-            });
-            setTimeout(() => setView('insights'), 500);
+            const coveredJson = enforceCritiqueBulletCoverage(json, resumeForModel, blockCount);
+            setReportData(buildReportDataFromCritiqueJson(coveredJson));
+            setView('insights');
         } catch (err) {
             setProgress(100);
             if (timerRef.current) clearInterval(timerRef.current);
@@ -340,10 +243,10 @@ JSON:
     const fetchOptimizedResume = async () => {
         setScanSteps((prev) => [
             ...prev,
-            'Calling your local LLM — full resume rewrites are large; on CPU expect several minutes. The bar completes only when the draft is returned.',
+            'Calling your local LLM: full resume rewrites are large; on CPU expect several minutes. The bar completes only when the draft is returned.',
         ]);
         try {
-            const resume = resumeText.trim().slice(0, 5600);
+            const resume = sliceForOptimizePrompt(resumeText);
             const jd = jobDescription.trim().slice(0, 3200);
             const system = `You are an ATS-aware resume editor for candidates in ANY profession (clinical, education, sales, skilled trades, logistics, government, nonprofit, creative, engineering, etc.). Output ONLY the rewritten resume as plain text (no JSON, no markdown code fences, no preamble or postscript).
 
@@ -381,24 +284,30 @@ Skills & credentials (any field):
 
 General:
 - Keep section order: header, Education, Professional Experience, then Leadership / Volunteer / Certifications / Skills as in the source.
-- Simple punctuation only — no HTML/tables.`;
+- Simple punctuation only — no HTML/tables.
+
+Honest JD alignment (patterns per Resume Matcher / srbhr/Resume-Matcher: truthful keyword weaving, not fabrication):
+- When a job description is provided: mirror JD phrasing only where the SOURCE RESUME already supports it. Rephrase existing bullets to surface overlap; do NOT add skills, tools, certifications, or metrics absent from the source.
+- Prefer clear, direct wording over resume clichés unless the source already uses them (e.g. prefer "led" over "spearheaded", "used" over "leveraged", "helped" over "facilitated").
+- Do not use em-dashes; use commas or periods instead.`;
 
             const tail =
-                '\n\nRemember: blank line between every role and every major section; never merge two employers — separate blocks; COPY EVERY SOURCE BULLET as its own "• " line; preserve locations from source; no empty experience/leadership sections; improve wording only; drop junk brand-only skills lines; stay honest to any profession.';
+                '\n\nRemember: blank line between every role and every major section; never merge two employers into one block; COPY EVERY SOURCE BULLET as its own "• " line; preserve locations from source; no empty experience/leadership sections; improve wording only; drop junk brand-only skills lines; stay honest to any profession.';
+            const jdHints = jd ? formatJdKeywordHintsForPrompt(jd) : '';
             const user = jd
-                ? `Job description (use only to mirror real skills/experience; do not add false keywords):\n${jd}\n\n---\n\nSOURCE RESUME — rewrite into optimized plain text:\n${resume}${tail}`
-                : `SOURCE RESUME — rewrite for general ATS clarity and scan-friendly structure:\n${resume}${tail}`;
+                ? `Job description (honest alignment only; see system rules):\n${jd}${jdHints ? `\n${jdHints}\n` : ''}\n---\n\nSOURCE RESUME: rewrite into optimized plain text:\n${resume}${tail}`
+                : `SOURCE RESUME: rewrite for general ATS clarity and scan-friendly structure:\n${resume}${tail}`;
 
             const out = await LocalLLM.generate({
                 system,
                 messages: [{ role: 'user', content: user }],
                 temperature: 0.2,
-                maxTokens: 3200,
+                maxTokens: 7200,
             });
             setProgress(100);
             if (timerRef.current) clearInterval(timerRef.current);
             setOptimizedText(cleanOptimizedOutput(out));
-            setTimeout(() => setView('compare'), 500);
+            setView('compare');
         } catch (err) {
             setProgress(100);
             if (timerRef.current) clearInterval(timerRef.current);
@@ -442,6 +351,7 @@ General:
                 alignItems: 'center',
                 justifyContent: 'center',
             }}
+            onKeyDown={e => { if (e.key === 'Escape' && view === 'scanning') e.stopPropagation(); }}
         >
             <div
                 style={{
@@ -472,24 +382,27 @@ General:
                         <div style={{ fontSize: 12, color: '#6f8299', marginTop: 1 }}>
                             {fileName
                                 ? fileName
-                                : 'Any profession — insights, JD-aware rewrite, side-by-side compare'}
+                                : 'Any profession - bullet-level resume diagnostics'}
                         </div>
                     </div>
                     <button
                         type="button"
-                        onClick={onCancel}
+                        onClick={view !== 'scanning' ? onCancel : undefined}
+                        disabled={view === 'scanning'}
+                        title={view === 'scanning' ? 'Analysis in progress — please wait' : 'Close'}
                         style={{
                             background: '#ffffff',
                             border: '1px solid #d7e0ec',
-                            color: '#6a5f7e',
+                            color: view === 'scanning' ? '#b0b8c8' : '#6a5f7e',
                             padding: '6px 14px',
                             borderRadius: 7,
                             fontSize: 13,
-                            cursor: 'pointer',
+                            cursor: view === 'scanning' ? 'not-allowed' : 'pointer',
                             fontFamily: 'inherit',
+                            opacity: view === 'scanning' ? 0.5 : 1,
                         }}
                     >
-                        Close
+                        {view === 'scanning' ? 'Running…' : 'Close'}
                     </button>
                 </div>
 
@@ -615,26 +528,6 @@ General:
                                 >
                                     Run diagnostic
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => startScan('optimize')}
-                                    disabled={!resumeText.trim() || isParsing}
-                                    style={{
-                                        flex: '1 1 200px',
-                                        background: BRAND,
-                                        color: '#fff',
-                                        border: 'none',
-                                        padding: '12px 14px',
-                                        borderRadius: 10,
-                                        fontSize: 14,
-                                        fontWeight: 600,
-                                        cursor: !resumeText.trim() || isParsing ? 'not-allowed' : 'pointer',
-                                        fontFamily: 'inherit',
-                                        opacity: !resumeText.trim() || isParsing ? 0.5 : 1,
-                                    }}
-                                >
-                                    Generate optimized resume
-                                </button>
                             </div>
 
                             <button
@@ -736,8 +629,8 @@ General:
                                             }}
                                         />
                                         <span style={{ fontSize: 14, color: '#5b708a' }}>
-                                            {scanSteps.some((s) => s.includes('local LLM'))
-                                                ? 'Generating (local model)…'
+                                            {progress >= 72
+                                                ? `Waiting for LLM response… ${Math.round(elapsedMs / 1000)}s`
                                                 : 'Working…'}
                                         </span>
                                     </div>
@@ -771,54 +664,6 @@ General:
 
                     {view === 'insights' && reportData && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-                                {Object.entries(reportData.summary).map(([key, data]) => (
-                                    <div
-                                        key={key}
-                                        style={{
-                                            background: '#f8fbff',
-                                            border: '1px solid #d7e0ec',
-                                            borderRadius: 12,
-                                            padding: '16px 14px',
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'flex-start',
-                                                marginBottom: 8,
-                                            }}
-                                        >
-                                            <span
-                                                style={{
-                                                    fontSize: 12,
-                                                    fontWeight: 600,
-                                                    color: '#6f8299',
-                                                    textTransform: 'capitalize',
-                                                }}
-                                            >
-                                                {SUMMARY_CARD_LABELS[key] || key.replace(/_/g, ' ')}
-                                            </span>
-                                            <span
-                                                style={{
-                                                    fontSize: 13,
-                                                    fontWeight: 700,
-                                                    color: scoreColor(data.rating),
-                                                    background: `${scoreColor(data.rating)}18`,
-                                                    border: `1px solid ${scoreColor(data.rating)}40`,
-                                                    padding: '2px 8px',
-                                                    borderRadius: 6,
-                                                }}
-                                            >
-                                                {data.rating}/10
-                                            </span>
-                                        </div>
-                                        <p style={{ fontSize: 13, color: '#4b6078', lineHeight: 1.55, margin: 0 }}>{data.advice}</p>
-                                    </div>
-                                ))}
-                            </div>
-
                             <div>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0f1728', marginBottom: 14 }}>
                                     Bullet-level feedback
@@ -911,36 +756,6 @@ General:
                                 </div>
                             </div>
 
-                            {reportData.upgrade_path.length > 0 && (
-                                <div>
-                                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f1728', marginBottom: 12 }}>Top improvements</div>
-                                    <div
-                                        style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                                            gap: 10,
-                                        }}
-                                    >
-                                        {reportData.upgrade_path.map((tip, i) => (
-                                            <div
-                                                key={i}
-                                                style={{
-                                                    background: '#f8fbff',
-                                                    borderLeft: `3px solid ${BRAND}`,
-                                                    borderRadius: '0 10px 10px 0',
-                                                    padding: '12px 14px',
-                                                    display: 'flex',
-                                                    gap: 10,
-                                                }}
-                                            >
-                                                <span style={{ fontSize: 11, fontWeight: 800, color: BRAND, flexShrink: 0 }}>{i + 1}</span>
-                                                <span style={{ fontSize: 13, color: '#4b6078', lineHeight: 1.5 }}>{tip}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
                             <div
                                 style={{
                                     display: 'flex',
@@ -950,43 +765,6 @@ General:
                                     borderTop: '1px solid #d7e0ec',
                                 }}
                             >
-                                <button
-                                    type="button"
-                                    onClick={() => startScan('optimize')}
-                                    style={{
-                                        flex: '1 1 180px',
-                                        padding: '11px',
-                                        background: BRAND,
-                                        border: 'none',
-                                        color: '#fff',
-                                        borderRadius: 8,
-                                        fontSize: 13,
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        fontFamily: 'inherit',
-                                    }}
-                                >
-                                    Generate optimized resume
-                                </button>
-                                {optimizedText && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setView('compare')}
-                                        style={{
-                                            flex: '1 1 140px',
-                                            padding: '11px',
-                                            background: '#ffffff',
-                                            border: '1px solid #d7e0ec',
-                                            color: '#4b6078',
-                                            borderRadius: 8,
-                                            fontSize: 13,
-                                            cursor: 'pointer',
-                                            fontFamily: 'inherit',
-                                        }}
-                                    >
-                                        Compare versions
-                                    </button>
-                                )}
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -1122,23 +900,6 @@ General:
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => startScan('optimize')}
-                                    style={{
-                                        padding: '11px 18px',
-                                        background: '#ffffff',
-                                        border: `1px solid ${BRAND}`,
-                                        color: BRAND,
-                                        borderRadius: 8,
-                                        fontSize: 13,
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        fontFamily: 'inherit',
-                                    }}
-                                >
-                                    Regenerate optimized
-                                </button>
-                                <button
-                                    type="button"
                                     onClick={resetAll}
                                     style={{
                                         padding: '11px 18px',
@@ -1161,3 +922,4 @@ General:
         </div>
     );
 }
+

@@ -21,7 +21,7 @@ const COLORS = {
 };
 
 const Logo = () => (
-  <div onClick={() => { window.location.href = '../home/index.html'; }} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+  <div onClick={() => { window.location.href = '/src/home/index.html'; }} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
     <svg width={26} height={26} viewBox="100 30 180 180" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="lg-dash" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -108,7 +108,7 @@ export default function Dashboard() {
     const token = localStorage.getItem('appli_token');
     const email = localStorage.getItem('appli_user_email') || '';
     if (!token) {
-      window.location.href = '../home/index.html';
+      window.location.href = '/src/home/index.html';
       return;
     }
     setIsAuthed(true);
@@ -145,6 +145,7 @@ export default function Dashboard() {
     const listener = (changes, ns) => {
       if (ns === 'local' && changes.jobs) loadJobs();
     };
+    // `chrome.storage` is the real MV3 API in extensions; in the web app it is backed by localStorage (see mocks/webShim.js).
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);
   }, [isAuthed]);
@@ -174,6 +175,7 @@ export default function Dashboard() {
     const runSync = () => {
       setIsSyncing(true);
       setSyncStatus('Syncing…');
+      // Web shim implements `sendMessage` → gmailService.startSync; real extension uses the background worker.
       chrome.runtime.sendMessage({ action: 'sync', range: syncRange }, response => {
         if (chrome.runtime?.lastError) {
           setSyncStatus(`Error: ${chrome.runtime.lastError.message}`);
@@ -220,7 +222,7 @@ export default function Dashboard() {
     localStorage.removeItem('appli_token');
     localStorage.removeItem('appli_user_email');
     localStorage.removeItem('appli_user_picture');
-    window.location.href = '../home/index.html';
+    window.location.href = '/src/home/index.html';
   };
 
   if (!isAuthed) return null;

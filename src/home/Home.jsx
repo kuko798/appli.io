@@ -76,7 +76,7 @@ function handleSignIn() {
       if (info.picture) localStorage.setItem('appli_user_picture', info.picture);
       else localStorage.removeItem('appli_user_picture');
     }).catch(() => {}).finally(() => {
-      window.location.href = '../dashboard/index.html';
+      window.location.href = '/src/dashboard/index.html';
     });
   });
 }

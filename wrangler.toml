@@ -1,0 +1,8 @@
+# Cloudflare Workers — static assets (Vite output in dist/).
+# Dashboard: Workers & Pages → Workers → Connect Git → build: npm run build → deploy: npx wrangler deploy
+# Worker name must use letters, numbers, and dashes only (no dots).
+name = "appli-io"
+compatibility_date = "2025-04-03"
+
+[assets]
+directory = "./dist"

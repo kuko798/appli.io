@@ -40,6 +40,9 @@ python_classifier/.venv/
 # Local Python venv (do not commit site-packages)
 llm-prod/
 
+# Cloudflare Wrangler local state
+.wrangler/
+
 # Local AI / editor config
 .claude/
 

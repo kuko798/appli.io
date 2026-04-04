@@ -1,12 +1,12 @@
 {
-    "name": "appli-io-extension",
+    "name": "appli-io-web",
     "version": "1.0.0",
     "type": "module",
-    "description": "Job Application Tracker Extension",
+    "description": "Appli.io web app — job tracker dashboard and tools",
     "scripts": {
         "dev": "vite",
-        "build": "vite build",
-        "watch:ext": "vite build --watch",
+        "build": "vite build && node scripts/copy-root-index.mjs",
+        "watch:web": "vite build --watch",
         "build:demo": "vite build -c vite.demo.config.js",
         "test": "vitest run",
         "test:watch": "vitest"

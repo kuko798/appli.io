@@ -1,7 +1,7 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import '../mocks/chrome.js'
+import '../mocks/webShim.js';
 import Dashboard from './Dashboard.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(

@@ -61,6 +61,8 @@ export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, 
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState(-1); // -1 = desc
+  const [editingRoleId, setEditingRoleId] = useState(null);
+  const [editingRoleValue, setEditingRoleValue] = useState('');
 
   const filtered = useMemo(() => {
     const list = activeFilter ? jobs.filter(j => j.status === activeFilter) : jobs;
@@ -77,6 +79,26 @@ export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, 
   const toggleSort = key => {
     if (sortKey === key) setSortDir(d => d * -1);
     else { setSortKey(key); setSortDir(-1); }
+  };
+
+  const beginRoleEdit = (job) => {
+    setEditingRoleId(job.id);
+    setEditingRoleValue(job.title || '');
+  };
+
+  const cancelRoleEdit = () => {
+    setEditingRoleId(null);
+    setEditingRoleValue('');
+  };
+
+  const saveRoleEdit = (job) => {
+    const nextTitle = editingRoleValue.trim();
+    if (!nextTitle) {
+      cancelRoleEdit();
+      return;
+    }
+    onUpdateJob(job.id, { title: nextTitle });
+    cancelRoleEdit();
   };
 
   if (jobs.length === 0) {
@@ -174,7 +196,68 @@ export default function JobTable({ jobs = [], activeFilter = null, onUpdateJob, 
                   </div>
                 </td>
                 <td style={{ padding: '13px 20px', fontSize: 14, color: '#3f5a78', fontWeight: 500 }}>
-                  {job.title || '—'}
+                  {editingRoleId === job.id ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 220 }}>
+                      <input
+                        value={editingRoleValue}
+                        onChange={e => setEditingRoleValue(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveRoleEdit(job);
+                          if (e.key === 'Escape') cancelRoleEdit();
+                        }}
+                        autoFocus
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          background: '#ffffff',
+                          border: `1px solid ${BRAND}55`,
+                          borderRadius: 8,
+                          color: '#0f1728',
+                          padding: '8px 10px',
+                          fontSize: 13,
+                          fontFamily: 'inherit',
+                          outline: 'none',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => saveRoleEdit(job)}
+                        style={{
+                          background: `${BRAND}14`,
+                          border: `1px solid ${BRAND}35`,
+                          color: BRAND,
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{job.title || '—'}</span>
+                      <button
+                        type="button"
+                        onClick={() => beginRoleEdit(job)}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid #d7e0ec',
+                          color: '#6b839f',
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          fontSize: 11,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
                 </td>
                 <td style={{ padding: '13px 20px', fontSize: 12, color: '#6b839f', maxWidth: 220 }}>
                   <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -1,8 +1,12 @@
 /* eslint-disable no-undef */
+/**
+ * Web app shim: when `chrome.*` is missing (dashboard in a normal browser), expose a compatible surface
+ * backed by localStorage + Google Identity Services so Gmail sync and LocalLLM settings work like production.
+ */
 import { gmailService } from '../services/gmailService.js';
 
 if (typeof chrome === 'undefined' || !chrome.storage) {
-    console.log('[Mock] Initializing Chrome API Mock');
+    console.log('[Web shim] Appli.io browser compatibility layer');
 
     const CLIENT_ID = "1097794489757-qglg0t731aplmm0o3cfq80bgbg4l64rl.apps.googleusercontent.com";
 
@@ -31,7 +35,7 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
     let _token = readStoredToken();
     if (_token) {
         window._mockToken = _token;
-        console.log('[Mock] Restored token from localStorage');
+        console.log('[Web shim] Restored token from localStorage');
     }
 
     const storageMock = (storageType) => ({
@@ -93,7 +97,7 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
                                 storeToken(response.access_token, response.expires_in);
                                 callback(_token);
                             } else {
-                                console.warn('[Mock] GIS token error:', response.error || response);
+                                console.warn('[Web shim] GIS token error:', response.error || response);
                                 callback(null);
                             }
                         },
@@ -106,7 +110,7 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
                         window._mockToken = stored;
                         callback(stored);
                     } else {
-                        console.warn('[Mock] Google Identity Services not loaded. Add the GIS script to your HTML.');
+                        console.warn('[Web shim] Google Identity Services not loaded. Add the GIS script to your HTML.');
                         callback(null);
                     }
                 }
@@ -187,7 +191,7 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
                     ? `${window.location.origin}/appli-classifier`.replace(/\/+$/, '')
                     : 'http://127.0.0.1:8765';
             localStorage.setItem(pyKey, JSON.stringify(def));
-            console.info('[Mock] Python classifier URL default:', def);
+            console.info('[Web shim] Python classifier URL default:', def);
         }
     } catch { /* ignore */ }
 
@@ -223,7 +227,7 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
                 const fix = `${window.location.origin}/appli-llm`.replace(/\/+$/, '');
                 localStorage.setItem(urlKey, JSON.stringify(fix));
                 localStorage.setItem('appli_sync_ollamaModel', JSON.stringify('Qwen/Qwen2.5-1.5B-Instruct'));
-                console.info('[Mock] Migrated LLM URL to Vite proxy (was Scitely without API key):', fix);
+                console.info('[Web shim] Migrated LLM URL to Vite proxy (was Scitely without API key):', fix);
             }
         }
     } catch {

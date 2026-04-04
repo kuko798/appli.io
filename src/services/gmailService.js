@@ -1,4 +1,5 @@
 /* eslint-disable no-undef */
+/** Gmail sync + classification for the web dashboard (and optional MV3 notifications when `chrome.notifications` exists). */
 import LocalLLM from '../background/localLLM.js';
 import Classifier from '../background/classifier.js';
 

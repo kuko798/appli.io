@@ -1,13 +1,13 @@
 /**
  * localLLM.js
  *
- * Email classification (Gmail sync, classifier.predictWithLocalLLM):
- * - Always uses the Python FastAPI service only: POST {subject, body} to `{pythonClassifierUrl}/classify`.
- * - Configure `pythonClassifierUrl` in extension options. Defaults: packaged extension → http://127.0.0.1:8765;
- *   Vite dev on localhost:5173 → same-origin /appli-classifier (see vite.config.js proxy).
+ * Email classification (Gmail sync):
+ * - Uses the Python classifier only: POST {subject, body} to `{pythonClassifierUrl}/classify`.
+ * - Configure `pythonClassifierUrl` via sync storage (web shim: localStorage). Dev on Vite :5173 defaults
+ *   to same-origin /appli-classifier (see vite.config.js).
  *
- * Interview simulator, resume tools, etc. use `generate` / `generateJSON` → OpenAI-compatible `ollamaUrl`
- * (e.g. pytorch_chat_server on localhost, or any /v1/chat/completions provider).
+ * Interview simulator, resume tools, etc. use `generate` / `generateJSON` against OpenAI-compatible `ollamaUrl`
+ * (pytorch_chat_server, hosted APIs, etc.).
  */
 
 const OPENAI_CHAT_PATH = "chat/completions";
@@ -20,27 +20,25 @@ const RETRY_BASE_DELAY = 700;
 const REQUEST_TIMEOUT = 90000;
 const LARGE_MODEL_TIMEOUT = 240000;
 /** Local PyTorch / Ollama on CPU can exceed 90s for ~1–2k tokens; hosted APIs stay fast. */
-const LOCAL_LLM_CHAT_TIMEOUT_MS = 600000;
+/** Full resume rewrites on CPU can exceed 10–15 min; keep above Vite /appli-llm proxy timeout. */
+const LOCAL_LLM_CHAT_TIMEOUT_MS = 1_800_000;
 const CACHE_MAX_SIZE = 500;
 const MIN_REQUEST_INTERVAL = 60;
 const MAX_EMAIL_BODY_CHARS = 2200;
 const LARGE_MODEL_HINTS = ["65b", "70b", "72b", "90b"];
 
 const VALID_STATUSES = ["Applied", "Assessment", "Interview", "Offer", "Rejected", null];
-/** Local OpenAI-compatible server (pytorch_chat_server, vLLM, Ollama with OpenAI shim, etc.) */
-const DEFAULT_BASE_URL_EXTENSION = "http://localhost:8000";
-const DEFAULT_MODEL_EXTENSION = "Qwen/Qwen2.5-1.5B-Instruct";
-/**
- * Dashboard opened outside Vite (e.g. static preview): still default to local — no cloud API key.
- * Use extension options or mock storage to point at a hosted /v1 only if you choose to.
- */
-const DEFAULT_BASE_URL_WEB = "http://127.0.0.1:8000";
-const DEFAULT_MODEL_WEB = DEFAULT_MODEL_EXTENSION;
+/** Local OpenAI-compatible chat (pytorch_chat_server, Ollama shim, etc.) — Chrome extension service worker. */
+const DEFAULT_LLM_BASE_EXTENSION = "http://localhost:8000";
+const DEFAULT_LLM_MODEL = "Qwen/Qwen2.5-1.5B-Instruct";
+/** Browser tab without Vite proxy (e.g. static preview of the dashboard). */
+const DEFAULT_LLM_BASE_BROWSER = "http://127.0.0.1:8000";
 /** Empty = no Authorization header (correct for local Ollama / pytorch_chat_server). */
 const DEFAULT_API_KEY = "";
 const LOCAL_FALLBACK_BASE_URL = "http://localhost:11434";
 
-function runsInChromeExtension() {
+/** True only in a packaged Chrome extension (has MV3 runtime id). The web app uses a shim without `runtime.id`. */
+function hasExtensionRuntime() {
     try {
         return Boolean(typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id);
     } catch {
@@ -83,10 +81,10 @@ function defaultLlmBaseForViteDev() {
 
 function syncStorageDefaults() {
     const pythonClassifierUrl = defaultPythonClassifierBase();
-    if (runsInChromeExtension()) {
+    if (hasExtensionRuntime()) {
         return {
-            ollamaUrl: DEFAULT_BASE_URL_EXTENSION,
-            ollamaModel: DEFAULT_MODEL_EXTENSION,
+            ollamaUrl: DEFAULT_LLM_BASE_EXTENSION,
+            ollamaModel: DEFAULT_LLM_MODEL,
             llmApiKey: DEFAULT_API_KEY,
             pythonClassifierUrl
         };
@@ -95,14 +93,14 @@ function syncStorageDefaults() {
     if (viteLlm) {
         return {
             ollamaUrl: viteLlm,
-            ollamaModel: DEFAULT_MODEL_EXTENSION,
+            ollamaModel: DEFAULT_LLM_MODEL,
             llmApiKey: DEFAULT_API_KEY,
             pythonClassifierUrl
         };
     }
     return {
-        ollamaUrl: DEFAULT_BASE_URL_WEB,
-        ollamaModel: DEFAULT_MODEL_WEB,
+        ollamaUrl: DEFAULT_LLM_BASE_BROWSER,
+        ollamaModel: DEFAULT_LLM_MODEL,
         llmApiKey: DEFAULT_API_KEY,
         pythonClassifierUrl
     };
@@ -128,7 +126,7 @@ const LocalLLM = {
 
     async getSettings() {
         if (this._settings) return this._settings;
-        console.log("[LocalLLM] Loading settings from chrome.storage.sync...");
+        console.log("[LocalLLM] Loading settings from sync storage…");
         return new Promise((resolve) => {
             const defs = syncStorageDefaults();
             chrome.storage.sync.get(defs, (items) => {
@@ -235,7 +233,7 @@ const LocalLLM = {
         const base = String(pythonClassifierUrl || "").trim().replace(/\/+$/, "");
         if (!base) {
             throw new Error(
-                "Gmail classification uses the Python service only. Open extension options and set Python service base URL (e.g. http://127.0.0.1:8765), then run python_classifier/service.py."
+                "Gmail classification uses the Python classifier only. Set Python classifier base URL in sync storage (e.g. http://127.0.0.1:8765) and run python_classifier/service.py."
             );
         }
 
@@ -407,11 +405,11 @@ const LocalLLM = {
                 err.message?.includes("network") ||
                 err.message?.includes("Failed to fetch");
 
-            // Ollama on :11434 from a normal browser tab hits CORS; only try this in the extension background.
+            // Ollama :11434 from a normal tab hits CORS; only the extension service worker can fall back here.
             if (
                 isNetworkError &&
                 ollamaUrl.includes("localhost:8000") &&
-                runsInChromeExtension()
+                hasExtensionRuntime()
             ) {
                 console.warn("[LocalLLM] Falling back to local endpoint:", LOCAL_FALLBACK_BASE_URL);
                 const fallbackModel = await this._resolveBestModel().catch(() => configuredModel);
