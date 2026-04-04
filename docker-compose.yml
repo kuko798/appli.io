@@ -1,4 +1,6 @@
 # Appli.io Python APIs — build: docker compose build
+# appli-llm image uses CPU-only PyTorch wheels (see pytorch_chat_server/Dockerfile). If builds fail with
+# "no space left on device", run: docker builder prune -af && docker system prune -af, and/or grow the VM disk.
 # Run everything (CPU LLM is slow; use a GPU host or point company-intel at an external OpenAI-compatible URL):
 #   docker compose up -d
 #

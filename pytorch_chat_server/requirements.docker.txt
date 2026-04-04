@@ -1,0 +1,5 @@
+# Used by Dockerfile: torch is installed separately from the CPU wheel index (no CUDA).
+transformers>=4.40.0
+accelerate>=0.27.0
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
