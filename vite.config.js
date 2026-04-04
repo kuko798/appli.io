@@ -4,6 +4,8 @@ import { resolve } from 'path';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
+    // Relative asset URLs so /src/dashboard/ and static hosts (Workers, Pages) always resolve JS next to the HTML path.
+    base: './',
     server: {
         proxy: {
             // python_classifier/service.py on 8765 → same-origin /appli-classifier in dev (see localLLM / web shim defaults).

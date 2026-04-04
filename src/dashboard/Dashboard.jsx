@@ -22,8 +22,24 @@ const COLORS = {
   subtle: '#898996',
 };
 
+const HOME_PATH = '/src/home/index.html';
+
+function readAuthSnapshot() {
+  try {
+    const token = localStorage.getItem('appli_token');
+    if (!token) return { authed: false, email: '', picture: '' };
+    return {
+      authed: true,
+      email: localStorage.getItem('appli_user_email') || '',
+      picture: localStorage.getItem('appli_user_picture') || '',
+    };
+  } catch {
+    return { authed: false, email: '', picture: '' };
+  }
+}
+
 const Logo = () => (
-  <div onClick={() => { window.location.href = '/src/home/index.html'; }} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+  <div onClick={() => { window.location.href = HOME_PATH; }} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
     <svg width={26} height={26} viewBox="100 30 180 180" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="lg-dash" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -100,22 +116,20 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState('');
   const [syncRange, setSyncRange] = useState('1m');
-  const [userEmail, setUserEmail] = useState('');
-  const [userPicture, setUserPicture] = useState('');
+  const [userEmail, setUserEmail] = useState(() => readAuthSnapshot().email);
+  const [userPicture, setUserPicture] = useState(() => readAuthSnapshot().picture);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(() => readAuthSnapshot().authed);
   const [activeFilter, setActiveFilter] = useState(null);
 
   useEffect(() => {
-    // Auth check — redirect to home if not signed in
     const token = localStorage.getItem('appli_token');
-    const email = localStorage.getItem('appli_user_email') || '';
     if (!token) {
-      window.location.href = '/src/home/index.html';
+      window.location.replace(HOME_PATH);
       return;
     }
     setIsAuthed(true);
-    setUserEmail(email);
+    setUserEmail(localStorage.getItem('appli_user_email') || '');
     setUserPicture(localStorage.getItem('appli_user_picture') || '');
     (async () => {
       await pullRemoteJobsMergeOnLogin();
@@ -232,10 +246,30 @@ export default function Dashboard() {
     localStorage.removeItem('appli_token');
     localStorage.removeItem('appli_user_email');
     localStorage.removeItem('appli_user_picture');
-    window.location.href = '/src/home/index.html';
+    window.location.href = HOME_PATH;
   };
 
-  if (!isAuthed) return null;
+  if (!isAuthed) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+        background: '#f4f7fb',
+        color: '#5b708a',
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#0f1728', marginBottom: 8 }}>Redirecting to sign in…</div>
+        <div style={{ fontSize: 13, maxWidth: 320, lineHeight: 1.5 }}>
+          If this page stays blank, open the browser console (F12) and check for script errors or blocked requests to <code style={{ fontSize: 12 }}>/assets/</code>.
+        </div>
+      </div>
+    );
+  }
 
   const isError = syncStatus.toLowerCase().startsWith('error');
   return (
