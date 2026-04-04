@@ -1,0 +1,63 @@
+# Appli.io Python APIs — build: docker compose build
+# Run everything (CPU LLM is slow; use a GPU host or point company-intel at an external OpenAI-compatible URL):
+#   docker compose up -d
+#
+# Gmail webapp needs real OAuth env; see webapp/main.py docstring.
+# Persisted job data: webapp_data volume → /app/data
+#
+# Override LLM backend for company-intel (skip appli-llm service):
+#   APPLI_INTEL_CHAT_BASE_URL=https://api.openai.com/v1 APPLI_INTEL_CHAT_MODEL=gpt-4o-mini docker compose up -d company-intel
+
+services:
+  appli-llm:
+    build: ./pytorch_chat_server
+    ports:
+      - "8000:8000"
+    environment:
+      APPLI_PYTORCH_HOST: "0.0.0.0"
+      # Optional: APPLI_PYTORCH_MODEL, HF_TOKEN, APPLI_PYTORCH_API_KEY
+    # For NVIDIA GPUs on Linux (Docker with nvidia-container-toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  company-intel:
+    build: ./company_intel
+    ports:
+      - "8780:8780"
+    environment:
+      APPLI_COMPANY_INTEL_HOST: "0.0.0.0"
+      APPLI_INTEL_CHAT_BASE_URL: ${APPLI_INTEL_CHAT_BASE_URL:-http://appli-llm:8000}
+      # Optional: APPLI_INTEL_CHAT_API_KEY (if your chat API requires it)
+
+  appli-classifier:
+    build: ./python_classifier
+    ports:
+      - "8765:8765"
+    environment:
+      APPLI_CLASSIFIER_HOST: "0.0.0.0"
+      APPLI_CLASSIFIER_PORT: "8765"
+      # Optional: APPLI_HF_MODEL, HF_TOKEN, APPLI_OLLAMA_MODEL, APPLI_OLLAMA_HOST
+
+  webapp:
+    build: ./webapp
+    ports:
+      - "8766:8766"
+    environment:
+      APPLI_WEBAPP_HOST: "0.0.0.0"
+      PORT: "8766"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      APPLI_PUBLIC_URL: ${APPLI_PUBLIC_URL:-http://127.0.0.1:8766}
+      # Optional: GOOGLE_REDIRECT_URI must match Google Cloud exactly (defaults to APPLI_PUBLIC_URL/auth/callback)
+      # Optional: APPLI_OLLAMA_MODEL, APPLI_OLLAMA_HOST
+    volumes:
+      - webapp_data:/app/data
+
+volumes:
+  webapp_data:
