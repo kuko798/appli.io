@@ -253,15 +253,4 @@ if (!isPackagedExtension()) {
     } catch {
         /* ignore */
     }
-
-    // Seed demo data if empty
-    if (!localStorage.getItem('appli_local_jobs')) {
-        const fakeJobs = [
-            { id: 1, company: "Stripe", title: "Frontend Engineer", subject: "Your application to Stripe", status: "Applied", date: new Date().toISOString() },
-            { id: 2, company: "Notion", title: "Full Stack Developer", subject: "Interview invitation from Notion", status: "Interview", date: new Date(Date.now() - 86400000).toISOString() },
-            { id: 3, company: "Vercel", title: "Software Engineer", subject: "We reviewed your application", status: "Offer", date: new Date(Date.now() - 5 * 86400000).toISOString() },
-            { id: 4, company: "Figma", title: "UX Engineer", subject: "Update on your Figma application", status: "Rejected", date: new Date(Date.now() - 12 * 86400000).toISOString() },
-        ];
-        localStorage.setItem('appli_local_jobs', JSON.stringify(fakeJobs));
-    }
 }
