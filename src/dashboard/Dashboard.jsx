@@ -430,7 +430,7 @@ export default function Dashboard() {
 
           <button
             type="button"
-            title={jobsApiBase() ? 'Jobs sync to your account across devices.' : 'Jobs stay on this browser unless VITE_JOBS_API_BASE + CORS are configured on the server.'}
+            title={jobsApiBase() ? 'Jobs sync to your account across devices.' : 'Jobs are saved in this browser only until account sync is turned on for your deployment.'}
             onClick={handleGmailSync}
             disabled={isSyncing}
             style={{

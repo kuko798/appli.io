@@ -223,21 +223,9 @@ export default function Home() {
         backdropFilter: 'blur(12px)'
       }}>
         <Logo />
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: isCompact ? 'stretch' : 'flex-end', gap: 8, width: isCompact ? '100%' : 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: isCompact ? '100%' : 'auto' }}>
-            <button type="button" onClick={handleSignIn} style={{ ...btnGhost, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Sign in</button>
-            <button type="button" onClick={handleSignIn} style={{ ...btnPrimary, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Open dashboard</button>
-          </div>
-          <p style={{
-            margin: 0,
-            maxWidth: 420,
-            fontSize: 11,
-            lineHeight: 1.45,
-            color: COLORS.subtle,
-            textAlign: isCompact ? 'center' : 'right',
-          }}>
-            This site runs in your browser. Without a deployed Appli API, sign-in tokens and data stay only in that browser. With <code style={{ fontSize: 10 }}>VITE_JOBS_API_BASE</code> pointing at your webapp, the same Google account loads shared jobs and profile (name, photo) from the server in Chrome, Edge, or any other browser.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: isCompact ? '100%' : 'auto' }}>
+          <button type="button" onClick={handleSignIn} style={{ ...btnGhost, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Sign in</button>
+          <button type="button" onClick={handleSignIn} style={{ ...btnPrimary, flex: isCompact ? 1 : 'none', minHeight: isCompact ? 44 : undefined }}>Open dashboard</button>
         </div>
       </nav>
 
