@@ -1,5 +1,5 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
-import { pullRemoteJobsMergeOnLogin, scheduleRemoteJobsPush, jobsApiBase } from './jobsSync.js';
+import { pullRemoteJobsMergeOnLogin, scheduleRemoteJobsPush } from './jobsSync.js';
 import { syncUserProfileFromServer } from '../services/userProfileSync.js';
 import { useMediaQuery } from './utils/useMediaQuery.js';
 import Stats from './components/Stats';
@@ -276,10 +276,7 @@ export default function Dashboard() {
         color: '#5b708a',
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#0f1728', marginBottom: 8 }}>Redirecting to sign in…</div>
-        <div style={{ fontSize: 13, maxWidth: 320, lineHeight: 1.5 }}>
-          If this page stays blank, open the browser console (F12) and check for script errors or blocked requests to <code style={{ fontSize: 12 }}>/assets/</code>.
-        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#0f1728' }}>Redirecting to sign in…</div>
       </div>
     );
   }
@@ -430,7 +427,6 @@ export default function Dashboard() {
 
           <button
             type="button"
-            title={jobsApiBase() ? 'Jobs sync to your account across devices.' : 'Jobs are saved in this browser only until account sync is turned on for your deployment.'}
             onClick={handleGmailSync}
             disabled={isSyncing}
             style={{
