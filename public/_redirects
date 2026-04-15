@@ -1,0 +1,9 @@
+# Cloudflare Workers Assets — SPA routing
+# API routes are handled by the Worker script (worker.js), not here.
+# Do NOT add external proxy rules here — Cloudflare rejects them and flags loops.
+
+# Dashboard SPA: any path under /src/dashboard/ serves the dashboard shell
+/src/dashboard/*  /src/dashboard/index.html  200
+
+# Root → home (Workers already serves dist/index.html for /, but explicit is safer)
+/  /index.html  200

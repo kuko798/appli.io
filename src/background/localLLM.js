@@ -46,14 +46,18 @@ function hasExtensionRuntime() {
     }
 }
 
-/** Base URL for python_classifier (no trailing slash). Service worker has no `window` → always :8765. */
+/**
+ * Base URL for python_classifier (no trailing slash).
+ * - Any http/https context (Vite dev OR deployed Worker): use relative /appli-classifier
+ *   so the request goes to the same origin. Vite proxies it in dev; the Worker proxies
+ *   it in production.
+ * - Chrome extension / service worker (chrome-extension: protocol or no window):
+ *   fall back to direct local address.
+ */
 function defaultPythonClassifierBase() {
     try {
-        if (typeof window !== "undefined" && window.location?.port === "5173") {
-            const h = window.location.hostname || "";
-            if (h === "localhost" || h === "127.0.0.1") {
-                return `${window.location.origin}/appli-classifier`.replace(/\/+$/, "");
-            }
+        if (typeof window !== "undefined" && window.location?.protocol?.startsWith("http")) {
+            return `${window.location.origin}/appli-classifier`;
         }
     } catch {
         /* ignore */

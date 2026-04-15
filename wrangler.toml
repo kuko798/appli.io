@@ -1,8 +1,14 @@
-# Cloudflare Workers — static assets (Vite output in dist/).
-# Dashboard: Workers & Pages → Workers → Connect Git → build: npm run build → deploy: npx wrangler deploy
-# Must match the Worker name in Cloudflare (Dashboard → Workers → this project).
+# Cloudflare Workers — static assets + API proxy.
+# Build: npm run build   Deploy: npx wrangler deploy
+# Set secrets (preferred over [vars] for URLs): wrangler secret put BACKEND_CLASSIFIER_URL
 name = "appli"
+main = "worker.js"
 compatibility_date = "2025-04-03"
 
 [assets]
 directory = "./dist"
+
+# Backend URLs — override with `wrangler secret put` for production
+[vars]
+BACKEND_CLASSIFIER_URL = "http://34.122.146.119:8765"
+# BACKEND_LLM_URL = ""   # leave blank to disable LLM proxy; set if your LLM is also on the VM
